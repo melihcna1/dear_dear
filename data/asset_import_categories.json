@@ -1,0 +1,168 @@
+{
+	"schema_version": 1,
+	"reserved_ranges": [
+		[100000, 109999],
+		[200000, 209999],
+		[300000, 309999],
+		[400000, 409999],
+		[600000, 609999],
+		[700000, 709999]
+	],
+	"market_image_root": "res://assets/market",
+	"categories": [
+		{
+			"key": "seeds",
+			"label": "Seeds",
+			"prefix": "seed",
+			"id_start": 110000,
+			"id_end": 119999,
+			"destination": "res://assets/dev_model/items/seeds/{sub_category}",
+			"gender_mode": "none",
+			"can_omit_id": true,
+			"subcategories": [
+				{"key": "fruit", "label": "Fruit", "prefix": "fruit"},
+				{"key": "general", "label": "General", "prefix": "general"}
+			]
+		},
+		{
+			"key": "crops",
+			"label": "Crops",
+			"prefix": "crop",
+			"id_start": 120000,
+			"id_end": 129999,
+			"destination": "res://assets/dev_model/items/crops/{sub_category}",
+			"gender_mode": "none",
+			"can_omit_id": true,
+			"subcategories": [
+				{"key": "fruit", "label": "Fruit", "prefix": "fruit"},
+				{"key": "general", "label": "General", "prefix": "general"}
+			]
+		},
+		{
+			"key": "food",
+			"label": "Food",
+			"prefix": "food",
+			"id_start": 130000,
+			"id_end": 139999,
+			"destination": "res://assets/dev_model/items/food/{sub_category}",
+			"gender_mode": "none",
+			"can_omit_id": true,
+			"subcategories": [
+				{"key": "dessert", "label": "Dessert", "prefix": "dessert"},
+				{"key": "drink", "label": "Drink", "prefix": "drink"},
+				{"key": "recipe", "label": "Recipe", "prefix": "recipe"},
+				{"key": "general", "label": "General", "prefix": "general"}
+			]
+		},
+		{
+			"key": "furniture",
+			"label": "Furniture",
+			"prefix": "furniture",
+			"id_start": 210000,
+			"id_end": 299999,
+			"destination": "res://assets/dev_model/furniture",
+			"gender_mode": "none",
+			"can_omit_id": false,
+			"subcategories": [
+				{"key": "decor", "label": "Decor", "prefix": "decor"},
+				{"key": "electronics", "label": "Electronics", "prefix": "electronics"},
+				{"key": "garden", "label": "Garden", "prefix": "garden"},
+				{"key": "seating", "label": "Seating", "prefix": "seating"},
+				{"key": "architecture", "label": "Architecture", "prefix": "architecture"},
+				{"key": "creature", "label": "Creature", "prefix": "creature"},
+				{"key": "display", "label": "Display", "prefix": "display"},
+				{"key": "hearth", "label": "Hearth", "prefix": "hearth"},
+				{"key": "lighting", "label": "Lighting", "prefix": "lighting"},
+				{"key": "general", "label": "General", "prefix": "general"}
+			]
+		},
+		{
+			"key": "cloth",
+			"label": "Cloth",
+			"prefix": "cloth",
+			"id_start": 310000,
+			"id_end": 399999,
+			"destination": "res://assets/dev_model/clothes/{gender}/{sub_category}",
+			"gender_mode": "required",
+			"can_omit_id": false,
+			"subcategories": [
+				{"key": "top", "label": "Top", "prefix": "top"},
+				{"key": "bottom", "label": "Bottom", "prefix": "bottom"},
+				{"key": "fullbody", "label": "Full Body", "prefix": "fullbody"},
+				{"key": "shoe", "label": "Shoes", "prefix": "shoe"},
+				{"key": "accessory", "label": "Accessories", "prefix": "accessory"},
+				{"key": "hair", "label": "Hair", "prefix": "hair"}
+			]
+		},
+		{
+			"key": "beauty",
+			"label": "Beauty & Customization",
+			"prefix": "beauty",
+			"id_start": 410000,
+			"id_end": 419999,
+			"destination": "res://assets/dev_model/other/beauty/{sub_category}",
+			"gender_mode": "optional",
+			"can_omit_id": true,
+			"subcategories": [
+				{"key": "customization", "label": "Customization", "prefix": "customization"},
+				{"key": "general", "label": "General", "prefix": "general"}
+			]
+		},
+		{
+			"key": "utility",
+			"label": "Utility Items",
+			"prefix": "utility",
+			"id_start": 420000,
+			"id_end": 429999,
+			"destination": "res://assets/dev_model/other/utility/{sub_category}",
+			"gender_mode": "none",
+			"can_omit_id": true,
+			"subcategories": [
+				{"key": "general", "label": "General", "prefix": "general"}
+			]
+		},
+		{
+			"key": "chat_effects",
+			"label": "Chat Bubbles & Effects",
+			"prefix": "chat",
+			"id_start": 430000,
+			"id_end": 439999,
+			"destination": "res://assets/dev_model/other/chat_effects/{sub_category}",
+			"gender_mode": "none",
+			"can_omit_id": true,
+			"subcategories": [
+				{"key": "bubble", "label": "Chat Bubble", "prefix": "bubble"},
+				{"key": "effect", "label": "Effect", "prefix": "effect"}
+			]
+		},
+		{
+			"key": "recipe_craft",
+			"label": "Recipe / Craft",
+			"prefix": "craft",
+			"id_start": 610000,
+			"id_end": 699999,
+			"destination": "res://assets/dev_model/craft/{sub_category}",
+			"gender_mode": "none",
+			"can_omit_id": false,
+			"subcategories": [
+				{"key": "cooking", "label": "Cooking", "prefix": "cooking"},
+				{"key": "crafting", "label": "Crafting", "prefix": "crafting"},
+				{"key": "general", "label": "General", "prefix": "general"}
+			]
+		},
+		{
+			"key": "market_shop",
+			"label": "Market / Shop",
+			"prefix": "shop",
+			"id_start": 710000,
+			"id_end": 999999,
+			"destination": "res://assets/dev_model/shop/{sub_category}",
+			"gender_mode": "none",
+			"can_omit_id": false,
+			"subcategories": [
+				{"key": "bundle", "label": "Standard Bundle", "prefix": "bundle"},
+				{"key": "general", "label": "General", "prefix": "general"}
+			]
+		}
+	]
+}

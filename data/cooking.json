@@ -1,0 +1,11 @@
+[
+	{
+		"recipe_id": "50000",
+		"crafted_item_id": "banana_waffles",
+		"crafted_item_name": "Banana Waffles",
+		"ingredients": {
+			"banana": 2
+		},
+		"cooking_time_sec": 60
+	}
+]

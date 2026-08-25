@@ -1,0 +1,41 @@
+{
+	"items": [
+		{
+			"asset_name": "u_cloth_top_dear_dear_male_rig_character_310193",
+			"created_at_utc": "2026-08-25T09:09:46",
+			"gender": "unisex",
+			"id_in_filename": true,
+			"is_buyable": true,
+			"is_sellable": false,
+			"item_id": "310193",
+			"item_name": "Dear Dear Male Rig Character",
+			"main_category": "cloth",
+			"market_image_path": "res://assets/market/cloth/top/u_cloth_top_dear_dear_male_rig_character_310193_s.png",
+			"model_path": "res://assets/dev_model/clothes/unisex/top/u_cloth_top_dear_dear_male_rig_character_310193.glb",
+			"record_id": "4d94e9f2-fd91-e5ea-0f22-1750d4274d57",
+			"source_sha256": "86e5ef4af1eb01bfa10be13c28fae2a008202f2d0090f64766c994f9bbb3ebae",
+			"sprite_name": "u_cloth_top_dear_dear_male_rig_character_310193_s",
+			"sub_category": "top",
+			"updated_at_utc": "2026-08-25T09:42:31"
+		},
+		{
+			"asset_name": "u_cloth_top_dear_dear_female_rig_character_310194",
+			"created_at_utc": "2026-08-25T09:42:18",
+			"gender": "unisex",
+			"id_in_filename": true,
+			"is_buyable": true,
+			"is_sellable": false,
+			"item_id": "310194",
+			"item_name": "Dear Dear Female Rig Character",
+			"main_category": "cloth",
+			"market_image_path": "res://assets/market/cloth/top/u_cloth_top_dear_dear_female_rig_character_310194_s.png",
+			"model_path": "res://assets/dev_model/clothes/unisex/top/u_cloth_top_dear_dear_female_rig_character_310194.glb",
+			"record_id": "f114d277-5bf2-da58-9c98-0a805a7952c2",
+			"source_sha256": "2b3d74150d47887c348e8f9af61106e25855a61206537c1433fd3d6845244be6",
+			"sprite_name": "u_cloth_top_dear_dear_female_rig_character_310194_s",
+			"sub_category": "top",
+			"updated_at_utc": "2026-08-25T09:42:35"
+		}
+	],
+	"schema_version": 1
+}

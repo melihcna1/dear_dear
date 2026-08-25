@@ -1,0 +1,11 @@
+[
+	{"id": "banana", "sell_price": 5},
+	{"id": "banana_waffles", "sell_price": 15},
+	{"id": "lemonade", "sell_price": 7},
+	{"id": "river_fish", "sell_price": 12},
+	{"id": "bubblebelly", "sell_price": 18},
+	{"id": "mossback", "sell_price": 26},
+	{"id": "moonwhisker", "sell_price": 38},
+	{"id": "glimmergill", "sell_price": 55},
+	{"id": "star_koi", "sell_price": 90}
+]

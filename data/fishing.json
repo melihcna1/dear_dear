@@ -1,0 +1,8 @@
+[
+	{"item_id": "river_fish", "weight": 34, "difficulty": 1.0, "movement_profile": "smooth"},
+	{"item_id": "bubblebelly", "weight": 24, "difficulty": 1.4, "movement_profile": "top_biased"},
+	{"item_id": "mossback", "weight": 18, "difficulty": 2.0, "movement_profile": "bottom_biased"},
+	{"item_id": "moonwhisker", "weight": 13, "difficulty": 2.7, "movement_profile": "mixed"},
+	{"item_id": "glimmergill", "weight": 8, "difficulty": 3.6, "movement_profile": "darting"},
+	{"item_id": "star_koi", "weight": 3, "difficulty": 5.0, "movement_profile": "chaotic"}
+]

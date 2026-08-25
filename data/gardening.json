@@ -1,0 +1,11 @@
+[
+	{
+		"id": 10000,
+		"item_name": "banana_seed",
+		"initial_growth_time": 8,
+		"regrowth_time": 20,
+		"regrowth_model_name": "banana_seed_growth",
+		"wither_time_min": 1080,
+		"withered_model_name": "banana_seed_wither"
+	}
+]
