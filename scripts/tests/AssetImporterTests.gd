@@ -36,6 +36,10 @@ func _test_ranges(config: DearDearAssetToolConfig) -> void:
 	assert(not config.can_omit_id("cloth"))
 	assert(config.can_omit_id("food"))
 	assert(config.destination_path("cloth", "top", "female") == "res://assets/dev_model/clothes/female/top")
+	var inferred := config.infer_taxonomy("C:/incoming/clothes/female/shoes/f_cloth_shoes_310180_Rig.glb")
+	assert(inferred.main_category == "cloth")
+	assert(inferred.sub_category == "shoe")
+	assert(inferred.gender == "female")
 
 
 func _test_naming(config: DearDearAssetToolConfig) -> void:
@@ -51,7 +55,12 @@ func _test_naming(config: DearDearAssetToolConfig) -> void:
 
 
 func _test_drafts(config: DearDearAssetToolConfig) -> void:
-	var draft := DearDearAssetDraft.create(ProjectSettings.globalize_path(FURNITURE_GLB))
+	var draft_fixture := ProjectSettings.globalize_path("user://asset_importer_tests/draft_fixture.glb")
+	DirAccess.make_dir_recursive_absolute(draft_fixture.get_base_dir())
+	var fixture_file := FileAccess.open(draft_fixture, FileAccess.WRITE)
+	fixture_file.store_string("draft fixture")
+	fixture_file.close()
+	var draft := DearDearAssetDraft.create(draft_fixture)
 	draft.main_category = "furniture"
 	draft.sub_category = "decor"
 	draft.item_name = "Teal Book"
@@ -66,6 +75,7 @@ func _test_drafts(config: DearDearAssetToolConfig) -> void:
 	assert(restored.record_id == draft.record_id)
 	assert(restored.source_sha256 == draft.source_sha256)
 	assert(restored.asset_name == draft.asset_name)
+	DirAccess.remove_absolute(draft_fixture)
 
 
 func _test_id_audit(config: DearDearAssetToolConfig) -> void:
@@ -158,13 +168,23 @@ func _test_sheets_response_parsing() -> void:
 
 
 func _test_preview_and_capture() -> void:
+	var source_glb := _available_preview_fixture()
+	if source_glb.is_empty():
+		print("AssetImporterTests: preview test skipped (no GLB fixture available)")
+		return
 	var studio := DearDearPreviewStudio.new()
 	root.add_child(studio)
 	await process_frame
-	assert(studio.validate_self_contained_glb(FURNITURE_GLB).ok)
-	var before_hash := FileAccess.get_sha256(FURNITURE_GLB)
-	assert(studio.load_glb(FURNITURE_GLB).ok)
-	assert(studio.get_loaded_source_path() == FURNITURE_GLB)
+	var transparent := Image.create(4, 4, false, Image.FORMAT_RGBA8)
+	transparent.fill(Color(0.0, 0.0, 0.0, 0.0))
+	assert(not studio._image_has_visible_content(transparent))
+	var opaque_black := Image.create(4, 4, false, Image.FORMAT_RGBA8)
+	opaque_black.fill(Color(0.0, 0.0, 0.0, 1.0))
+	assert(studio._image_has_visible_content(opaque_black))
+	assert(studio.validate_self_contained_glb(source_glb).ok)
+	var before_hash := FileAccess.get_sha256(source_glb)
+	assert(studio.load_glb(source_glb).ok)
+	assert(studio.get_loaded_source_path() == source_glb)
 	var first_model_instance_id := studio.get_model_instance_id()
 	assert(first_model_instance_id != 0)
 	studio.set_lighting({"ambient_energy": 0.8, "key_energy": 2.4, "fill_energy": 1.2, "rim_energy": 0.6})
@@ -174,18 +194,18 @@ func _test_preview_and_capture() -> void:
 	studio.set_camera_profile({"yaw": 1.0, "pitch": -0.2, "distance": 4.0, "pan_x": 0.1, "pan_y": -0.1})
 	var retained := studio.get_camera_profile()
 	assert(is_equal_approx(float(retained.yaw), 1.0))
-	assert(studio.load_glb(CLOTH_GLB).ok)
-	assert(studio.get_loaded_source_path() == CLOTH_GLB)
+	assert(studio.load_glb(source_glb).ok)
+	assert(studio.get_loaded_source_path() == source_glb)
 	var second_model_instance_id := studio.get_model_instance_id()
 	assert(second_model_instance_id != first_model_instance_id)
 	assert(not is_instance_id_valid(first_model_instance_id))
 	retained = studio.get_camera_profile()
 	assert(is_equal_approx(float(retained.distance), 4.0))
-	assert(studio.load_glb(FURNITURE_GLB).ok)
-	assert(studio.get_loaded_source_path() == FURNITURE_GLB)
+	assert(studio.load_glb(source_glb).ok)
+	assert(studio.get_loaded_source_path() == source_glb)
 	assert(not is_instance_id_valid(second_model_instance_id))
-	assert(studio.load_glb(CLOTH_GLB).ok)
-	assert(studio.get_loaded_source_path() == CLOTH_GLB)
+	assert(studio.load_glb(source_glb).ok)
+	assert(studio.get_loaded_source_path() == source_glb)
 	var capture_path := "user://asset_importer_tests/capture.png"
 	var capture_result: Dictionary = await studio.capture_png(capture_path)
 	assert(capture_result.ok, str(capture_result.get("error", "")))
@@ -196,5 +216,23 @@ func _test_preview_and_capture() -> void:
 	assert(image.detect_alpha() != Image.ALPHA_NONE)
 	assert(image.get_pixel(0, 0).a < 0.05)
 	assert(image.get_used_rect().has_area())
-	assert(FileAccess.get_sha256(FURNITURE_GLB) == before_hash)
+	assert(FileAccess.get_sha256(source_glb) == before_hash)
+	var external_fixture := ProjectSettings.globalize_path("user://asset_importer_tests/external_fixture.glb")
+	DirAccess.make_dir_recursive_absolute(external_fixture.get_base_dir())
+	assert(DirAccess.copy_absolute(ProjectSettings.globalize_path(source_glb) if source_glb.begins_with("res://") else source_glb, external_fixture) == OK)
+	assert(studio.load_glb(external_fixture).ok)
+	assert(studio.get_renderable_mesh_count() > 0)
+	var external_capture: Dictionary = await studio.capture_png("user://asset_importer_tests/external_capture.png")
+	assert(external_capture.ok, str(external_capture.get("error", "")))
+	DirAccess.remove_absolute(external_fixture)
 	studio.queue_free()
+
+
+func _available_preview_fixture() -> String:
+	for path in [OS.get_environment("DEAR_DEAR_TEST_GLB"), FURNITURE_GLB, CLOTH_GLB]:
+		if path.is_empty():
+			continue
+		var absolute: String = ProjectSettings.globalize_path(path) if path.begins_with("res://") else path
+		if FileAccess.file_exists(absolute):
+			return path
+	return ""

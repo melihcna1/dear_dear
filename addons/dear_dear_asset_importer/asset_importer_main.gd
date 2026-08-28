@@ -103,7 +103,7 @@ func _activate_visible_preview() -> void:
 		return
 	# Main-screen plugins are built while hidden. Reload only after Godot has
 	# made the workspace visible and assigned its final Control dimensions.
-	if _current_index >= 0:
+	if _current_index >= 0 and not _busy:
 		_load_current_preview()
 	_studio.set_preview_active(true)
 
@@ -476,14 +476,15 @@ func _on_files_selected(paths: PackedStringArray) -> void:
 			_set_status("Skipped %s: %s" % [path.get_file(), validation.error], true)
 			continue
 		var draft := DearDearAssetDraft.create(path)
-		if _current_index >= 0:
-			var source := _drafts[_current_index]
-			draft.main_category = source.main_category
-			draft.sub_category = source.sub_category
-			draft.gender = source.gender
-			draft.is_buyable = source.is_buyable
-			draft.is_sellable = source.is_sellable
-			draft.id_in_filename = source.id_in_filename
+		var inferred := _config.infer_taxonomy(path)
+		if inferred.has("main_category"):
+			draft.main_category = str(inferred.main_category)
+		if inferred.has("sub_category"):
+			draft.sub_category = str(inferred.sub_category)
+		elif not _config.subcategories(draft.main_category).is_empty():
+			draft.sub_category = str(_config.subcategories(draft.main_category)[0].get("key", ""))
+		if inferred.has("gender"):
+			draft.gender = str(inferred.gender)
 		draft.refresh_derived(_config)
 		_drafts.append(draft)
 		added += 1
@@ -525,17 +526,19 @@ func _select_index(index: int) -> void:
 
 
 func _on_queue_item_selected(index: int) -> void:
+	if _busy:
+		return
 	if index != _current_index:
 		_select_index(index)
 
 
 func _on_queue_multi_selected(index: int, selected: bool) -> void:
-	if selected:
+	if selected and not _busy:
 		_on_queue_item_selected(index)
 
 
 func _on_queue_item_clicked(index: int, _position: Vector2, mouse_button_index: int) -> void:
-	if mouse_button_index == MOUSE_BUTTON_LEFT:
+	if mouse_button_index == MOUSE_BUTTON_LEFT and not _busy:
 		_on_queue_item_selected(index)
 
 
@@ -621,7 +624,7 @@ func _reset_camera() -> void:
 
 
 func _on_category_selected(_index: int) -> void:
-	if _updating_form or _current_index < 0:
+	if _busy or _updating_form or _current_index < 0:
 		return
 	var draft := _drafts[_current_index]
 	draft.main_category = str(_category_option.get_selected_metadata())
@@ -640,7 +643,7 @@ func _on_category_selected(_index: int) -> void:
 
 
 func _on_subcategory_selected(_index: int) -> void:
-	if _updating_form or _current_index < 0:
+	if _busy or _updating_form or _current_index < 0:
 		return
 	var draft := _drafts[_current_index]
 	draft.sub_category = str(_subcategory_option.get_selected_metadata())
@@ -653,7 +656,7 @@ func _on_subcategory_selected(_index: int) -> void:
 
 
 func _on_form_changed(_value: Variant = null) -> void:
-	if _updating_form:
+	if _busy or _updating_form:
 		return
 	_commit_form_to_draft()
 
@@ -663,7 +666,7 @@ func _on_text_form_changed(_value: String) -> void:
 
 
 func _on_id_changed(value: String) -> void:
-	if _updating_form or _current_index < 0:
+	if _busy or _updating_form or _current_index < 0:
 		return
 	if not _auto_id_check.button_pressed:
 		var digits := ""
@@ -680,7 +683,7 @@ func _on_id_changed(value: String) -> void:
 
 
 func _on_auto_id_toggled(enabled: bool) -> void:
-	if _updating_form or _current_index < 0:
+	if _busy or _updating_form or _current_index < 0:
 		return
 	var draft := _drafts[_current_index]
 	draft.auto_id = enabled
@@ -744,12 +747,20 @@ func _apply_metadata_to_selected() -> void:
 
 func _remove_selected_drafts() -> void:
 	var indices := _selected_indices()
+	var removed := 0
+	var removed_reserved := false
 	for position in range(indices.size() - 1, -1, -1):
 		var index := indices[position]
-		if _drafts[index].status != DearDearAssetDraft.STATUS_DRAFT:
-			_set_status("Only unreserved Draft records can be removed.", true)
+		if _drafts[index].status not in [
+			DearDearAssetDraft.STATUS_DRAFT,
+			DearDearAssetDraft.STATUS_ERROR,
+			DearDearAssetDraft.STATUS_RESERVED,
+		]:
+			_set_status("Captured, exported, or synced records cannot be removed from the queue.", true)
 			continue
+		removed_reserved = removed_reserved or _drafts[index].status == DearDearAssetDraft.STATUS_RESERVED
 		_drafts.remove_at(index)
+		removed += 1
 	_current_index = mini(_current_index, _drafts.size() - 1)
 	_refresh_id_index_and_suggestions()
 	_refresh_queue()
@@ -758,6 +769,9 @@ func _remove_selected_drafts() -> void:
 	else:
 		_clear_form()
 	_queue_journal_save()
+	if removed > 0:
+		var suffix := " Any remotely reserved IDs remain permanently reserved." if removed_reserved else ""
+		_set_status("Removed %d queued record(s).%s" % [removed, suffix])
 
 
 func _refresh_id_index_and_suggestions(refresh_form := true) -> void:
@@ -1087,16 +1101,25 @@ func _remove_file_if_present(path: String) -> void:
 
 
 func _temporary_capture() -> void:
+	if _busy:
+		return
 	if _current_index < 0:
 		_set_status("Select a model first.", true)
 		return
+	_commit_form_to_draft()
 	var draft := _drafts[_current_index]
+	_busy = true
+	_update_action_state()
 	var preview_result := _studio.load_glb(draft.source_path)
 	if not preview_result.ok:
+		_busy = false
+		_update_action_state()
 		_set_status(str(preview_result.error), true)
 		return
 	var path := "user://asset_importer_test_%s.png" % draft.record_id
 	var result: Dictionary = await _studio.capture_png(path)
+	_busy = false
+	_update_action_state()
 	if result.ok:
 		_set_status("Temporary capture saved to %s" % ProjectSettings.globalize_path(path))
 	else:

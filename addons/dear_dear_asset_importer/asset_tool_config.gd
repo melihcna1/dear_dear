@@ -88,3 +88,59 @@ func can_omit_id(category_key: String) -> bool:
 
 func profile_key(category_key: String, subcategory_key: String) -> String:
 	return "%s/%s" % [category_key, subcategory_key]
+
+
+func infer_taxonomy(source_path: String) -> Dictionary:
+	var normalized := source_path.replace("\\", "/").to_lower()
+	var filename_slug := DearDearAssetNaming.slugify(normalized.get_file().get_basename())
+	var path_slugs := PackedStringArray()
+	for segment in normalized.get_base_dir().split("/", false):
+		path_slugs.append(DearDearAssetNaming.slugify(segment))
+	var result := {}
+	for category_entry in categories():
+		if not category_entry is Dictionary:
+			continue
+		var category_key := str(category_entry.get("key", ""))
+		var aliases := PackedStringArray([
+			DearDearAssetNaming.slugify(category_key),
+			DearDearAssetNaming.slugify(str(category_entry.get("prefix", ""))),
+			DearDearAssetNaming.slugify(str(category_entry.get("label", ""))),
+		])
+		if category_key == "cloth":
+			aliases.append("clothes")
+		if _has_taxonomy_alias(path_slugs, filename_slug, aliases):
+			result.main_category = category_key
+			break
+	if result.is_empty():
+		return result
+	var category_key := str(result.main_category)
+	for subcategory_entry in subcategories(category_key):
+		if not subcategory_entry is Dictionary:
+			continue
+		var subcategory_key := str(subcategory_entry.get("key", ""))
+		var aliases := PackedStringArray([
+			DearDearAssetNaming.slugify(subcategory_key),
+			DearDearAssetNaming.slugify(str(subcategory_entry.get("prefix", ""))),
+			DearDearAssetNaming.slugify(str(subcategory_entry.get("label", ""))),
+		])
+		if _has_taxonomy_alias(path_slugs, filename_slug, aliases):
+			result.sub_category = subcategory_key
+			break
+	if gender_mode(category_key) != "none":
+		if "female" in path_slugs or filename_slug.begins_with("f_"):
+			result.gender = "female"
+		elif "male" in path_slugs or filename_slug.begins_with("m_"):
+			result.gender = "male"
+		elif "unisex" in path_slugs or filename_slug.begins_with("u_"):
+			result.gender = "unisex"
+	return result
+
+
+func _has_taxonomy_alias(path_slugs: PackedStringArray, filename_slug: String, aliases: PackedStringArray) -> bool:
+	var filename_tokens := Array(filename_slug.split("_", false))
+	for alias in aliases:
+		if alias.is_empty():
+			continue
+		if alias in path_slugs or alias in filename_tokens:
+			return true
+	return false

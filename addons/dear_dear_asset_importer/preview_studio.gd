@@ -82,10 +82,24 @@ func load_glb(path: String) -> Dictionary:
 	else:
 		var document := GLTFDocument.new()
 		var state := GLTFState.new()
+		# GLTFState defaults to extracting embedded images while running in the
+		# editor. Runtime preview must keep them in memory; extraction starts an
+		# editor reimport and can leave the generated material without a texture.
+		state.handle_binary_image_mode = GLTFState.HANDLE_BINARY_IMAGE_MODE_EMBED_AS_UNCOMPRESSED
+		# The editor does not register the runtime conversion extension by
+		# default, so generate_scene() otherwise returns non-renderable
+		# ImporterMeshInstance3D nodes. Register it only for this import.
+		var mesh_conversion: GLTFDocumentExtension = null
+		if Engine.is_editor_hint():
+			mesh_conversion = GLTFDocumentExtensionConvertImporterMesh.new()
+			GLTFDocument.register_gltf_document_extension(mesh_conversion, true)
 		var error := document.append_from_file(path, state)
+		if error == OK:
+			scene_root = document.generate_scene(state)
+		if mesh_conversion:
+			GLTFDocument.unregister_gltf_document_extension(mesh_conversion)
 		if error != OK:
 			return {"ok": false, "error": "Could not load GLB: %s" % error_string(error)}
-		scene_root = document.generate_scene(state)
 	if not scene_root:
 		return {"ok": false, "error": "The GLB did not produce a scene."}
 	if scene_root is Node3D:
@@ -94,6 +108,9 @@ func load_glb(path: String) -> Dictionary:
 		_model = Node3D.new()
 		_model.add_child(scene_root)
 	_normalizer.add_child(_model)
+	if get_renderable_mesh_count() == 0:
+		clear_model()
+		return {"ok": false, "error": "The GLB contains no renderable mesh instances."}
 	_loaded_source_path = path
 	_normalize_model()
 	_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
@@ -318,7 +335,8 @@ func _normalize_model() -> void:
 		return
 	var center := bounds.position + bounds.size * 0.5
 	var maximum_dimension := maxf(bounds.size.x, maxf(bounds.size.y, bounds.size.z))
-	var uniform_scale := 2.0 / maxf(maximum_dimension, 0.001)
+	# Leave enough space for perspective rotation and asymmetric models.
+	var uniform_scale := 1.55 / maxf(maximum_dimension, 0.001)
 	_normalizer.scale = Vector3.ONE * uniform_scale
 	_normalizer.position = -center * uniform_scale
 
@@ -360,11 +378,14 @@ func _image_has_visible_content(image: Image) -> bool:
 	if not image or image.is_empty() or not image.get_used_rect().has_area():
 		return false
 	var sample := image.duplicate()
-	sample.resize(32, 32, Image.INTERPOLATE_LANCZOS)
+	sample.resize(64, 64, Image.INTERPOLATE_LANCZOS)
 	for y in sample.get_height():
 		for x in sample.get_width():
 			var color: Color = sample.get_pixel(x, y)
-			if color.a > 0.01 and maxf(color.r, maxf(color.g, color.b)) > 0.01:
+			# The render target has a transparent background, so alpha is the
+			# reliable signal. Requiring a non-zero RGB value rejects valid black
+			# or very dark assets.
+			if color.a > 0.01:
 				return true
 	return false
 
@@ -389,6 +410,17 @@ func get_loaded_source_path() -> String:
 
 func get_model_instance_id() -> int:
 	return _model.get_instance_id() if _model and is_instance_valid(_model) else 0
+
+
+func get_renderable_mesh_count() -> int:
+	return _count_renderable_meshes(_model) if _model else 0
+
+
+func _count_renderable_meshes(node: Node) -> int:
+	var count := 1 if node is MeshInstance3D and node.mesh else 0
+	for child in node.get_children():
+		count += _count_renderable_meshes(child)
+	return count
 
 
 func _calculate_bounds(node: Node, parent_transform: Transform3D) -> AABB:
