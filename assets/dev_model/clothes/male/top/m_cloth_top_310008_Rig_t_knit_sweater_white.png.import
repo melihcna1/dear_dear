@@ -2,10 +2,11 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://byncir63sf1g2"
-path="res://.godot/imported/m_cloth_top_310008_Rig_t_knit_sweater_white.png-841d43f769461f28277897ea8e42255b.ctex"
+uid="uid://dwhmgp5r56a3"
+path.s3tc="res://.godot/imported/m_cloth_top_310008_Rig_t_knit_sweater_white.png-841d43f769461f28277897ea8e42255b.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "71684f6f189c8dc14d6255a40c5d1917"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/dev_model/clothes/male/top/m_cloth_top_310008_Rig_t_knit_sweater_white.png"
-dest_files=["res://.godot/imported/m_cloth_top_310008_Rig_t_knit_sweater_white.png-841d43f769461f28277897ea8e42255b.ctex"]
+dest_files=["res://.godot/imported/m_cloth_top_310008_Rig_t_knit_sweater_white.png-841d43f769461f28277897ea8e42255b.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +41,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0

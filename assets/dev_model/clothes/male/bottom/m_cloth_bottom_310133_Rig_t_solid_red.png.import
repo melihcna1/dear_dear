@@ -2,10 +2,11 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://j2vq1x6a7m0t"
-path="res://.godot/imported/m_cloth_bottom_310133_Rig_t_solid_red.png-74d1c68c818399d7ffd7e5f57f8b84a4.ctex"
+uid="uid://dq3my6nikv7fu"
+path.s3tc="res://.godot/imported/m_cloth_bottom_310133_Rig_t_solid_red.png-74d1c68c818399d7ffd7e5f57f8b84a4.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "ee0b0048d3a4f256fef8cb1978bc12b6"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/dev_model/clothes/male/bottom/m_cloth_bottom_310133_Rig_t_solid_red.png"
-dest_files=["res://.godot/imported/m_cloth_bottom_310133_Rig_t_solid_red.png-74d1c68c818399d7ffd7e5f57f8b84a4.ctex"]
+dest_files=["res://.godot/imported/m_cloth_bottom_310133_Rig_t_solid_red.png-74d1c68c818399d7ffd7e5f57f8b84a4.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +41,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0

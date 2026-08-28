@@ -2,10 +2,11 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://vl28gqqjttah"
-path="res://.godot/imported/m_cloth_bottom_310105_Rig_t_pattern_robot_pajamas_blue.png-09b7703c78cdd0cd7b9f47acc115efa8.ctex"
+uid="uid://byjedbw1qpa7r"
+path.s3tc="res://.godot/imported/m_cloth_bottom_310105_Rig_t_pattern_robot_pajamas_blue.png-09b7703c78cdd0cd7b9f47acc115efa8.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "6526fdcd700631757883e1c600c8d63b"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/dev_model/clothes/male/bottom/m_cloth_bottom_310105_Rig_t_pattern_robot_pajamas_blue.png"
-dest_files=["res://.godot/imported/m_cloth_bottom_310105_Rig_t_pattern_robot_pajamas_blue.png-09b7703c78cdd0cd7b9f47acc115efa8.ctex"]
+dest_files=["res://.godot/imported/m_cloth_bottom_310105_Rig_t_pattern_robot_pajamas_blue.png-09b7703c78cdd0cd7b9f47acc115efa8.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +41,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0

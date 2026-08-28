@@ -2,10 +2,11 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bh4rulhfy8yj"
-path="res://.godot/imported/m_cloth_bottom_310144_Rig_t_solid_pinkie.png-502aef2efe11fd72a13a192cf26326c2.ctex"
+uid="uid://phwamxg2miou"
+path.s3tc="res://.godot/imported/m_cloth_bottom_310144_Rig_t_solid_pinkie.png-502aef2efe11fd72a13a192cf26326c2.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "c26091619e22b562d9ed3ea7565419e0"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/dev_model/clothes/male/bottom/m_cloth_bottom_310144_Rig_t_solid_pinkie.png"
-dest_files=["res://.godot/imported/m_cloth_bottom_310144_Rig_t_solid_pinkie.png-502aef2efe11fd72a13a192cf26326c2.ctex"]
+dest_files=["res://.godot/imported/m_cloth_bottom_310144_Rig_t_solid_pinkie.png-502aef2efe11fd72a13a192cf26326c2.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +41,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0

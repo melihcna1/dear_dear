@@ -1,4 +1,23 @@
 {
-	"items": [],
+	"items": [
+		{
+			"asset_name": "f_cloth_top_thick_strap_crop_teal_310219",
+			"created_at_utc": "2026-08-27T08:29:37",
+			"gender": "female",
+			"id_in_filename": true,
+			"is_buyable": true,
+			"is_sellable": false,
+			"item_id": "310219",
+			"item_name": "Thick Strap Crop Teal",
+			"main_category": "cloth",
+			"market_image_path": "res://assets/market/cloth/top/f_cloth_top_thick_strap_crop_teal_310219_s.png",
+			"model_path": "res://assets/dev_model/clothes/female/top/f_cloth_top_thick_strap_crop_teal_310219.glb",
+			"record_id": "9a3056b0-6fce-d81f-f400-ddf677210567",
+			"source_sha256": "97aa2292ac7a42f737cb717e9978381599fbc6ffd1c259e9dd4de9335b4e1fe6",
+			"sprite_name": "f_cloth_top_thick_strap_crop_teal_310219_s",
+			"sub_category": "top",
+			"updated_at_utc": "2026-08-28T10:16:53"
+		}
+	],
 	"schema_version": 1
 }
