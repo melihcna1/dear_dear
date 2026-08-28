@@ -122,6 +122,8 @@ The importer normalizes model bounds for consistent framing. Camera angles are s
 
 Click **Reset Camera Angle** only when you want to reset the active category/subcategory profile. Other profiles are unaffected.
 
+Use **Lighting Settings** to adjust Ambient, Key light, Fill light, and Rim light intensity. Click **Apply** to use the values in both the live preview and the final PNG capture, or **Reset Defaults** to restore the standard studio setup. Lighting is saved per user with the importer journal.
+
 For a non-destructive check, click **Temporary Capture Test**. The importer renders a test image to Godot's user data directory without reserving an ID or writing project assets.
 
 ### Step 5: Validate the draft
@@ -136,7 +138,7 @@ Before capture, check that:
 - **Sheets: connected** is shown.
 - No error is shown for the active record.
 
-The local audit may report the project's known pre-existing duplicate ID `310148`. This warning does not modify existing assets and does not prevent unrelated valid imports.
+The local audit should report no model collisions in a clean project. Keep legacy source models in the external re-import source folder until they are processed; placing their ID-bearing filenames directly below `res://assets` makes those IDs local owners again.
 
 ### Step 6: Capture and save
 
@@ -308,7 +310,7 @@ Re-export it as a self-contained binary glTF/GLB if necessary.
 
 ### ID is rejected
 
-The ID may be outside the category range, in a reserved block, already claimed, or duplicated in the current queue. Click **Refresh IDs**, confirm the category, and normally return to **Auto** allocation.
+The ID may be outside the category range, in a reserved block, already claimed, or duplicated in the current queue. A manual ID may fill a genuine gap, but an apparently empty Sheet slot can still be owned by an existing local GLB/FBX filename or catalog record. Local collision errors show that owner. Click **Refresh IDs**, inspect the reported path/record, confirm the category, and normally return to **Auto** allocation.
 
 ### Existing destination is blocked
 
@@ -322,9 +324,9 @@ Keep the draft and retry **Capture & Save Market PNG Image**. The journal and st
 
 The camera profile is shared by category/subcategory. Adjust the profile using a representative model, or click **Reset Camera Angle** for that active profile and compose it again. Other category/subcategory profiles remain unchanged.
 
-### Local audit reports ID 310148
+### The local audit reports an unexpected ID collision
 
-This is a known collision in existing project content. Existing assets are audited only and are not renamed or backfilled. Investigate it separately if the project team decides to clean up legacy data; unrelated new imports may continue.
+An ID-bearing GLB/FBX was placed directly inside the project, two queued records share an ID, or a managed output already owns it. Read the audit tooltip or capture error for the exact owner. Keep unprocessed legacy sources outside the project and add them through **Add GLB Files…** instead of copying them into `res://assets` manually.
 
 ## 12. Configuration and maintenance
 
@@ -349,4 +351,3 @@ Existing assets are never automatically migrated, renamed, or backfilled when co
 7. Select captured rows and click **Export CSV / JSON**.
 8. Select exported rows and click **Sync Google Sheets**.
 9. Confirm the rows show **Synced** and verify important outputs.
-

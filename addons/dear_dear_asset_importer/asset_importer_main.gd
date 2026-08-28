@@ -19,6 +19,7 @@ var _sheets: DearDearSheetsClient
 var _studio: DearDearPreviewStudio
 var _drafts: Array[DearDearAssetDraft] = []
 var _camera_profiles: Dictionary = {}
+var _lighting_profile: Dictionary = {}
 var _remote_ids := PackedStringArray()
 var _current_index := -1
 var _updating_form := false
@@ -30,6 +31,11 @@ var _error_dialog: AcceptDialog
 var _settings_dialog: AcceptDialog
 var _settings_url: LineEdit
 var _settings_token: LineEdit
+var _lighting_dialog: AcceptDialog
+var _lighting_ambient: SpinBox
+var _lighting_key: SpinBox
+var _lighting_fill: SpinBox
+var _lighting_rim: SpinBox
 var _queue: ItemList
 var _category_option: OptionButton
 var _subcategory_option: OptionButton
@@ -162,6 +168,11 @@ func _build_ui() -> void:
 	test_capture_button.tooltip_text = "Captures to user:// without reserving an ID or writing project assets."
 	test_capture_button.pressed.connect(_temporary_capture)
 	camera_actions.add_child(test_capture_button)
+	var lighting_button := Button.new()
+	lighting_button.text = "Lighting Settings"
+	lighting_button.tooltip_text = "Adjust the studio lights used by both the preview and final PNG capture."
+	lighting_button.pressed.connect(_open_lighting_settings)
+	camera_actions.add_child(lighting_button)
 	camera_actions.add_spacer(false)
 	_source_label = Label.new()
 	_source_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -198,6 +209,7 @@ func _build_ui() -> void:
 	_error_dialog.title = "Asset Importer"
 	add_child(_error_dialog)
 	_build_settings_dialog()
+	_build_lighting_dialog()
 
 
 func _build_metadata_panel(parent: Control) -> void:
@@ -368,6 +380,41 @@ func _build_settings_dialog() -> void:
 	add_child(_settings_dialog)
 
 
+func _build_lighting_dialog() -> void:
+	_lighting_dialog = AcceptDialog.new()
+	_lighting_dialog.title = "Product Preview Lighting"
+	_lighting_dialog.ok_button_text = "Apply"
+	_lighting_dialog.confirmed.connect(_save_lighting_settings)
+	_lighting_dialog.custom_action.connect(_on_lighting_dialog_action)
+	var fields := VBoxContainer.new()
+	fields.custom_minimum_size = Vector2(430, 0)
+	_lighting_dialog.add_child(fields)
+	var help := Label.new()
+	help.text = "These values affect both the live product preview and the saved 1024×1024 PNG."
+	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	fields.add_child(help)
+	_lighting_ambient = _create_lighting_spin()
+	_add_form_row(fields, "Ambient", _lighting_ambient)
+	_lighting_key = _create_lighting_spin()
+	_add_form_row(fields, "Key light", _lighting_key)
+	_lighting_fill = _create_lighting_spin()
+	_add_form_row(fields, "Fill light", _lighting_fill)
+	_lighting_rim = _create_lighting_spin()
+	_add_form_row(fields, "Rim light", _lighting_rim)
+	_lighting_dialog.add_button("Reset Defaults", true, "reset_defaults")
+	add_child(_lighting_dialog)
+
+
+func _create_lighting_spin() -> SpinBox:
+	var spin := SpinBox.new()
+	spin.min_value = 0.0
+	spin.max_value = 5.0
+	spin.step = 0.05
+	spin.allow_greater = false
+	spin.allow_lesser = false
+	return spin
+
+
 func _add_form_row(parent: Control, label_text: String, control: Control) -> void:
 	var row := HBoxContainer.new()
 	var label := Label.new()
@@ -382,6 +429,9 @@ func _add_form_row(parent: Control, label_text: String, control: Control) -> voi
 func _load_journal() -> void:
 	var state := _journal.load_state()
 	_camera_profiles = state.get("camera_profiles", {}).duplicate(true)
+	_lighting_profile = state.get("lighting", {}).duplicate(true)
+	_studio.set_lighting(_lighting_profile)
+	_lighting_profile = _studio.get_lighting()
 	for row in state.get("drafts", []):
 		if row is Dictionary:
 			var draft := DearDearAssetDraft.from_dictionary(row)
@@ -811,18 +861,19 @@ func _capture_draft(draft: DearDearAssetDraft) -> Dictionary:
 	var validation_errors := draft.validate(_config)
 	if not validation_errors.is_empty():
 		return {"ok": false, "error": " ".join(validation_errors)}
+	# Check manual IDs before calling reserve so a known local collision does not
+	# consume a permanent remote reservation and the user sees its exact owner.
+	if not draft.auto_id and draft.status in [DearDearAssetDraft.STATUS_DRAFT, DearDearAssetDraft.STATUS_ERROR]:
+		var manual_collisions := _local_id_collision_sources(draft)
+		if not manual_collisions.is_empty():
+			return {"ok": false, "error": _format_id_collision(draft.item_id, manual_collisions)}
 	if draft.status in [DearDearAssetDraft.STATUS_DRAFT, DearDearAssetDraft.STATUS_ERROR]:
 		var reserve_result: Dictionary = await _reserve_id(draft)
 		if not reserve_result.ok:
 			return reserve_result
-	var local_collision_index := DearDearAssetIdIndex.new()
-	var other_fixed: Array = []
-	for other in _drafts:
-		if other.record_id != draft.record_id and (not other.auto_id or other.status not in [DearDearAssetDraft.STATUS_DRAFT, DearDearAssetDraft.STATUS_ERROR]):
-			other_fixed.append(other)
-	local_collision_index.rebuild(_catalog.items, other_fixed)
-	if local_collision_index.is_used(draft.item_id):
-		return {"ok": false, "error": "ID %s already exists in a local model, catalog record, or reserved draft." % draft.item_id}
+	var collision_sources := _local_id_collision_sources(draft)
+	if not collision_sources.is_empty():
+		return {"ok": false, "error": _format_id_collision(draft.item_id, collision_sources)}
 	draft.refresh_derived(_config)
 	var ownership := _validate_output_ownership(draft)
 	if not ownership.ok:
@@ -854,6 +905,54 @@ func _capture_draft(draft: DearDearAssetDraft) -> Dictionary:
 	return {"ok": true}
 
 
+func _local_id_collision_sources(draft: DearDearAssetDraft) -> Array:
+	var local_collision_index := DearDearAssetIdIndex.new()
+	var other_fixed: Array = []
+	for other in _drafts:
+		if other.record_id != draft.record_id and (not other.auto_id or other.status not in [DearDearAssetDraft.STATUS_DRAFT, DearDearAssetDraft.STATUS_ERROR]):
+			other_fixed.append(other)
+	local_collision_index.rebuild(_catalog.items, other_fixed)
+	var ignored_sources := {
+		"catalog:%s" % draft.record_id: true,
+		"draft:%s" % draft.record_id: true,
+	}
+	for row in _catalog.items:
+		if str(row.get("record_id", "")) == draft.record_id:
+			var catalog_model_path := str(row.get("model_path", ""))
+			if not catalog_model_path.is_empty():
+				ignored_sources[catalog_model_path] = true
+			break
+	var current_output_owned := draft.status in [
+		DearDearAssetDraft.STATUS_CAPTURED,
+		DearDearAssetDraft.STATUS_EXPORTED,
+		DearDearAssetDraft.STATUS_SYNCED,
+	]
+	if not current_output_owned and draft.status in [DearDearAssetDraft.STATUS_RESERVED, DearDearAssetDraft.STATUS_ERROR]:
+		current_output_owned = (
+			FileAccess.file_exists(draft.model_path)
+			and FileAccess.get_sha256(draft.model_path) == draft.source_sha256)
+	if current_output_owned and not draft.model_path.is_empty():
+		ignored_sources[draft.model_path] = true
+	var collisions: Array = []
+	for source in local_collision_index.sources_for(draft.item_id):
+		if not ignored_sources.has(str(source)):
+			collisions.append(source)
+	return collisions
+
+
+func _format_id_collision(item_id: String, sources: Array) -> String:
+	var owners := PackedStringArray()
+	for source_value in sources:
+		var source := str(source_value)
+		if source.begins_with("catalog:"):
+			owners.append("catalog record %s" % source.trim_prefix("catalog:"))
+		elif source.begins_with("draft:"):
+			owners.append("queued draft %s" % source.trim_prefix("draft:"))
+		else:
+			owners.append(source)
+	return "ID %s is already used by: %s" % [item_id, "; ".join(owners)]
+
+
 func _reserve_id(draft: DearDearAssetDraft) -> Dictionary:
 	if not _sheets.is_configured():
 		return {"ok": false, "error": "Configure and connect the Sheets webhook before final asset capture."}
@@ -863,11 +962,16 @@ func _reserve_id(draft: DearDearAssetDraft) -> Dictionary:
 		if other.record_id != draft.record_id and (not other.auto_id or other.status not in [DearDearAssetDraft.STATUS_DRAFT, DearDearAssetDraft.STATUS_ERROR]):
 			fixed.append(other)
 	blocked_index.rebuild(_catalog.items, fixed)
+	var blocked_ids := Array(blocked_index.used_ids())
+	# An idempotent retry may see its own catalog/output entry in the local scan.
+	# Do not send that one as a server-side block when no foreign owner exists.
+	if not draft.item_id.is_empty() and _local_id_collision_sources(draft).is_empty():
+		blocked_ids.erase(draft.item_id)
 	var result: Dictionary = await _sheets.call_action("reserve", {
 		"record_id": draft.record_id,
 		"category_key": draft.main_category,
 		"requested_id": "" if draft.auto_id else draft.item_id,
-		"blocked_ids": Array(blocked_index.used_ids()),
+		"blocked_ids": blocked_ids,
 	})
 	if not result.ok:
 		return {"ok": false, "error": _response_error(result)}
@@ -1087,6 +1191,41 @@ func _open_settings() -> void:
 	_settings_dialog.popup_centered()
 
 
+func _open_lighting_settings() -> void:
+	var lighting := _studio.get_lighting()
+	_lighting_ambient.value = float(lighting.ambient_energy)
+	_lighting_key.value = float(lighting.key_energy)
+	_lighting_fill.value = float(lighting.fill_energy)
+	_lighting_rim.value = float(lighting.rim_energy)
+	_lighting_dialog.popup_centered()
+
+
+func _save_lighting_settings() -> void:
+	_lighting_profile = {
+		"ambient_energy": _lighting_ambient.value,
+		"key_energy": _lighting_key.value,
+		"fill_energy": _lighting_fill.value,
+		"rim_energy": _lighting_rim.value,
+	}
+	_studio.set_lighting(_lighting_profile)
+	_lighting_profile = _studio.get_lighting()
+	_queue_journal_save()
+	_set_status("Studio lighting applied to preview and capture.")
+
+
+func _on_lighting_dialog_action(action: StringName) -> void:
+	if action != &"reset_defaults":
+		return
+	_studio.reset_lighting()
+	_lighting_profile = _studio.get_lighting()
+	_lighting_ambient.value = float(_lighting_profile.ambient_energy)
+	_lighting_key.value = float(_lighting_profile.key_energy)
+	_lighting_fill.value = float(_lighting_profile.fill_energy)
+	_lighting_rim.value = float(_lighting_profile.rim_energy)
+	_queue_journal_save()
+	_set_status("Studio lighting reset to defaults.")
+
+
 func _save_settings() -> void:
 	_sheets.save_settings(_settings_url.text, _settings_token.text)
 	_update_connection_status()
@@ -1132,4 +1271,4 @@ func _queue_journal_save() -> void:
 
 func _flush_journal() -> void:
 	_journal_save_queued = false
-	_journal.save_state(_drafts, _camera_profiles)
+	_journal.save_state(_drafts, _camera_profiles, _lighting_profile)

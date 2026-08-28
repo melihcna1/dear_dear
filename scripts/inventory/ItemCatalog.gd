@@ -8,12 +8,7 @@ const ORIGINAL_STARTER_IDS := [
 	"winged_sheep", "turntable", "street_lamp", "portal", "frame",
 	"ocak", "lambacik", "basic_pot_ver2", "basic_pot", "candle_ver2",
 ]
-const AVATAR_STARTER_IDS := [
-	"f_cloth_fullbody_310013", "f_cloth_top_310044",
-	"f_cloth_bottom_310157", "f_cloth_hair_310180",
-	"m_cloth_fullbody_310148", "m_cloth_top_310000",
-	"m_cloth_bottom_310009", "m_cloth_hair_310188",
-]
+const AVATAR_STARTER_IDS := []
 const RENTAL_PRICING := [
 	{"duration_days": 1, "currency_type": WalletModel.SOFT, "price": 100},
 	{"duration_days": 7, "currency_type": WalletModel.SOFT, "price": 500},

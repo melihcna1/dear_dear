@@ -12,6 +12,12 @@ const DEFAULT_PROFILE := {
 	"pan_x": 0.0,
 	"pan_y": 0.0,
 }
+const DEFAULT_LIGHTING := {
+	"ambient_energy": 0.55,
+	"key_energy": 2.0,
+	"fill_energy": 1.4,
+	"rim_energy": 1.0,
+}
 
 var _viewport: SubViewport
 var _presented_texture: ImageTexture
@@ -19,6 +25,11 @@ var _normalizer: Node3D
 var _camera: Camera3D
 var _model: Node3D
 var _profile := DEFAULT_PROFILE.duplicate(true)
+var _lighting := DEFAULT_LIGHTING.duplicate(true)
+var _environment: Environment
+var _key_light: DirectionalLight3D
+var _fill_light: OmniLight3D
+var _rim_light: OmniLight3D
 var _drag_button := MOUSE_BUTTON_NONE
 var _last_mouse := Vector2.ZERO
 var _preview_poll_timer: Timer
@@ -138,6 +149,22 @@ func reset_camera() -> void:
 	_update_camera()
 
 
+func set_lighting(settings: Dictionary) -> void:
+	_lighting = DEFAULT_LIGHTING.duplicate(true)
+	for key in DEFAULT_LIGHTING:
+		if settings.has(key):
+			_lighting[key] = clampf(float(settings[key]), 0.0, 5.0)
+	_apply_lighting()
+
+
+func get_lighting() -> Dictionary:
+	return _lighting.duplicate(true)
+
+
+func reset_lighting() -> void:
+	set_lighting(DEFAULT_LIGHTING)
+
+
 func capture_png(path: String) -> Dictionary:
 	if not _model:
 		return {"ok": false, "error": "Load a model before capturing."}
@@ -210,14 +237,13 @@ func _build_world() -> void:
 	add_child(_viewport)
 
 	var world_environment := WorldEnvironment.new()
-	var environment := Environment.new()
-	environment.background_mode = Environment.BG_COLOR
-	environment.background_color = Color(0.0, 0.0, 0.0, 0.0)
-	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	environment.ambient_light_color = Color(0.72, 0.76, 0.82)
-	environment.ambient_light_energy = 0.55
-	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	world_environment.environment = environment
+	_environment = Environment.new()
+	_environment.background_mode = Environment.BG_COLOR
+	_environment.background_color = Color(0.0, 0.0, 0.0, 0.0)
+	_environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	_environment.ambient_light_color = Color(0.72, 0.76, 0.82)
+	_environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	world_environment.environment = _environment
 	_viewport.add_child(world_environment)
 
 	_normalizer = Node3D.new()
@@ -232,28 +258,39 @@ func _build_world() -> void:
 	_camera.far = 100.0
 	_viewport.add_child(_camera)
 
-	var key_light := DirectionalLight3D.new()
-	key_light.name = "KeyLight"
-	key_light.rotation_degrees = Vector3(-42.0, -38.0, 0.0)
-	key_light.light_energy = 2.0
-	key_light.shadow_enabled = true
-	_viewport.add_child(key_light)
+	_key_light = DirectionalLight3D.new()
+	_key_light.name = "KeyLight"
+	_key_light.rotation_degrees = Vector3(-42.0, -38.0, 0.0)
+	_key_light.shadow_enabled = true
+	_viewport.add_child(_key_light)
 
-	var fill_light := OmniLight3D.new()
-	fill_light.name = "FillLight"
-	fill_light.position = Vector3(-2.4, 1.8, 2.6)
-	fill_light.light_energy = 1.4
-	fill_light.omni_range = 10.0
-	_viewport.add_child(fill_light)
+	_fill_light = OmniLight3D.new()
+	_fill_light.name = "FillLight"
+	_fill_light.position = Vector3(-2.4, 1.8, 2.6)
+	_fill_light.omni_range = 10.0
+	_viewport.add_child(_fill_light)
 
-	var rim_light := OmniLight3D.new()
-	rim_light.name = "RimLight"
-	rim_light.position = Vector3(2.0, 2.7, -2.2)
-	rim_light.light_color = Color(0.72, 0.82, 1.0)
-	rim_light.light_energy = 1.0
-	rim_light.omni_range = 10.0
-	_viewport.add_child(rim_light)
+	_rim_light = OmniLight3D.new()
+	_rim_light.name = "RimLight"
+	_rim_light.position = Vector3(2.0, 2.7, -2.2)
+	_rim_light.light_color = Color(0.72, 0.82, 1.0)
+	_rim_light.omni_range = 10.0
+	_viewport.add_child(_rim_light)
+	_apply_lighting()
 	_update_camera(false)
+
+
+func _apply_lighting() -> void:
+	if _environment:
+		_environment.ambient_light_energy = float(_lighting.ambient_energy)
+	if _key_light:
+		_key_light.light_energy = float(_lighting.key_energy)
+	if _fill_light:
+		_fill_light.light_energy = float(_lighting.fill_energy)
+	if _rim_light:
+		_rim_light.light_energy = float(_lighting.rim_energy)
+	if _model:
+		_queue_preview_refresh()
 
 
 func _normalize_model() -> void:

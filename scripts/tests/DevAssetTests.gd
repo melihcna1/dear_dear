@@ -11,7 +11,7 @@ func _run() -> void:
 		for file_value in DirAccess.get_files_at("res://assets/dev_model/clothes/male/%s" % slot):
 			if str(file_value).get_extension().to_lower() == "glb":
 				male_wearable_files += 1
-	assert(male_wearable_files == 72)
+	assert(male_wearable_files == 0)
 	assert(ResourceLoader.exists("res://assets/dev_model/character/dear_dear_male_rig_character.glb"))
 	assert(ResourceLoader.exists("res://assets/dev_model/animations/male_walk.fbx"))
 	for excluded_path in [
@@ -56,8 +56,22 @@ func _run() -> void:
 			assert(_bone_names(skeleton) == reference_bones_by_gender[definition.gender])
 			checked_wearables += 1
 		model.free()
-	assert(checked_models == 267)
-	assert(checked_wearables == 194)
+	assert(checked_models == 1)
+	assert(checked_wearables == 0)
+	var placement := PlacementController.new()
+	root.add_child(placement)
+	var placement_inventory := InventoryModel.new()
+	root.add_child(placement_inventory)
+	await process_frame
+	placement.setup(catalog, placement_inventory)
+	placement.load_world([{
+		"definition_id": "removed_legacy_asset_310000",
+		"instance_id": "legacy-instance",
+		"position": [0, 0, 0],
+		"x_axis": [1, 0, 0],
+		"z_axis": [0, 0, 1],
+	}])
+	assert(placement.get_placed_items().is_empty())
 
 	var profile := AvatarProfile.new()
 	root.add_child(profile)
@@ -77,30 +91,13 @@ func _run() -> void:
 	assert(avatar._animation_sources.has("walk"))
 	avatar.set_moving(true)
 	await _assert_animation_is_stable(avatar)
-	avatar.apply_state({
-		"gender": AvatarProfile.FEMALE,
-		"top": "f_cloth_top_310103",
-		"bottom": "f_cloth_bottom_310179",
-		"fullbody": "",
-		"hair": "f_cloth_hair_310187",
-		"hair_color": "hair_color_red",
-		"skin_tone": "skin_tone_7",
-	})
-	await process_frame
-	assert(avatar._garment_skeletons.size() == 3)
-	var hip_index := avatar._base_skeleton.find_bone("mixamorig_Hips")
-	for garment_skeleton in avatar._garment_skeletons:
-		var garment_hip := garment_skeleton.find_bone("mixamorig_Hips")
-		assert(garment_hip >= 0)
-		assert(garment_skeleton.get_bone_pose_position(garment_hip).is_equal_approx(avatar._base_skeleton.get_bone_pose_position(hip_index)))
-
 	var female_base_id := avatar._base_root.get_instance_id()
 	avatar.apply_state({
 		"gender": AvatarProfile.MALE,
-		"top": "m_cloth_top_310008",
-		"bottom": "m_cloth_bottom_310153",
+		"top": "",
+		"bottom": "",
 		"fullbody": "",
-		"hair": "m_cloth_hair_310192",
+		"hair": "",
 		"hair_color": "hair_color_red",
 		"skin_tone": "skin_tone_7",
 	})
@@ -110,13 +107,8 @@ func _run() -> void:
 	assert(not is_instance_id_valid(female_base_id))
 	assert(avatar._base_skeleton.get_bone_count() == 52)
 	assert(avatar._animation_sources.size() == 2)
-	assert(avatar._garment_skeletons.size() == 3)
+	assert(avatar._garment_skeletons.is_empty())
 	await _assert_animation_is_stable(avatar)
-	var male_hip_index := avatar._base_skeleton.find_bone("mixamorig_Hips")
-	for garment_skeleton in avatar._garment_skeletons:
-		var garment_hip := garment_skeleton.find_bone("mixamorig_Hips")
-		assert(garment_hip >= 0)
-		assert(garment_skeleton.get_bone_pose_position(garment_hip).is_equal_approx(avatar._base_skeleton.get_bone_pose_position(male_hip_index)))
 
 	print("DevAssetTests: PASS")
 	quit()

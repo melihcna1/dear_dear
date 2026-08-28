@@ -41,6 +41,10 @@ func is_used(item_id: String, ignored_record_id := "") -> bool:
 	return false
 
 
+func sources_for(item_id: String) -> Array:
+	return usages.get(item_id, []).duplicate()
+
+
 func duplicates() -> Dictionary:
 	var result := {}
 	for item_id in usages:

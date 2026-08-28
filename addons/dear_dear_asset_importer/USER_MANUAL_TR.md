@@ -124,6 +124,8 @@ Seçili modeli kadraja almak için şu kontrolleri kullanın:
 
 Yalnızca etkin kategori/alt kategori profilini varsayılan ayarına döndürmek istediğinizde **Reset Camera Angle** düğmesine basın. Diğer profiller etkilenmez.
 
+Ortam, ana, dolgu ve arka ışık şiddetlerini ayarlamak için **Lighting Settings** düğmesini kullanın. Değerleri hem canlı önizlemeye hem de nihai PNG çekimine uygulamak için **Apply**, standart stüdyo düzenine dönmek için **Reset Defaults** düğmesine basın. Aydınlatma ayarları içe aktarıcı günlüğünde kullanıcıya özel saklanır.
+
 Dosyalara zarar vermeyen bir kontrol için **Temporary Capture Test** düğmesini kullanın. Araç, kimlik rezerve etmeden ve proje varlıklarını yazmadan Godot kullanıcı verisi klasörüne bir deneme görseli kaydeder.
 
 ### Adım 5: Taslağı doğrulayın
@@ -138,7 +140,7 @@ Yakalama işleminden önce şunları kontrol edin:
 - **Sheets: connected** görünmelidir.
 - Etkin kayıt için hata mesajı bulunmamalıdır.
 
-Yerel denetim, projede önceden var olan `310148` kimlik çakışmasını bildirebilir. Bu uyarı mevcut varlıkları değiştirmez ve ilgisiz, geçerli yeni içe aktarmaları engellemez.
+Temiz bir projede yerel denetim model çakışması bildirmemelidir. Eski kaynak modelleri işlenene kadar harici yeniden içe aktarma klasöründe tutun; kimlik içeren dosya adlarını doğrudan `res://assets` altına koymak bu kimlikleri yeniden yerel sahip olarak işaretler.
 
 ### Adım 6: Görseli yakalayın ve kaydedin
 
@@ -310,7 +312,7 @@ kontrol edin. Gerekirse modeli kendi içinde eksiksiz ikili glTF/GLB olarak yeni
 
 ### Kimlik reddediliyor
 
-Kimlik kategori aralığının dışında, rezerve edilmiş bir blokta, daha önce alınmış veya mevcut kuyrukta yinelenmiş olabilir. **Refresh IDs** düğmesine basın, kategoriyi doğrulayın ve normalde **Auto** atamaya geri dönün.
+Kimlik kategori aralığının dışında, rezerve edilmiş bir blokta, daha önce alınmış veya mevcut kuyrukta yinelenmiş olabilir. Manuel kimlik gerçek bir boşluğu doldurabilir; ancak E-Tabloda boş görünen bir kimlik mevcut bir yerel GLB/FBX dosya adı veya katalog kaydı tarafından kullanılıyor olabilir. Yerel çakışma mesajı artık bu sahibi gösterir. **Refresh IDs** düğmesine basın, bildirilen yolu/kaydı inceleyin, kategoriyi doğrulayın ve normalde **Auto** atamaya geri dönün.
 
 ### Mevcut hedef nedeniyle işlem engelleniyor
 
@@ -324,9 +326,9 @@ Taslağı koruyun ve **Capture & Save Market PNG Image** işlemini yeniden deney
 
 Kamera profili kategori/alt kategori tarafından paylaşılır. Temsilî bir modelle profili ayarlayın veya etkin profil için **Reset Camera Angle** düğmesine basıp kadrajı yeniden oluşturun. Diğer kategori/alt kategori profilleri değişmez.
 
-### Yerel denetim 310148 kimliğini bildiriyor
+### Yerel denetim beklenmeyen bir kimlik çakışması bildiriyor
 
-Bu, mevcut proje içeriğinde bilinen eski bir çakışmadır. Mevcut varlıklar yalnızca denetlenir; otomatik olarak yeniden adlandırılmaz veya geriye dönük doldurulmaz. Ekip eski verileri temizlemeye karar verirse ayrıca araştırılabilir; ilgisiz yeni içe aktarmalar devam edebilir.
+Kimlik içeren bir GLB/FBX doğrudan projeye konmuş, iki kuyruk kaydı aynı kimliği kullanıyor veya yönetilen bir çıktı bu kimliğin sahibi olabilir. Tam sahibi görmek için denetim ipucunu ya da yakalama hata mesajını okuyun. İşlenmemiş eski kaynakları proje dışında tutun ve `res://assets` içine elle kopyalamak yerine **Add GLB Files…** ile ekleyin.
 
 ## 12. Yapılandırma ve bakım
 
@@ -351,4 +353,3 @@ Yapılandırma değiştiğinde mevcut varlıklar otomatik olarak taşınmaz, yen
 7. Yakalanmış satırları seçip **Export CSV / JSON** düğmesine basın.
 8. Dışa aktarılmış satırları seçip **Sync Google Sheets** düğmesine basın.
 9. Satırların **Synced** durumuna geçtiğini ve önemli çıktıların doğru olduğunu doğrulayın.
-

@@ -5,16 +5,16 @@ signal changed
 signal item_expired(item_name: String)
 
 const FEMALE_STARTERS := {
-	"fullbody": "f_cloth_fullbody_310013",
-	"top": "f_cloth_top_310044",
-	"bottom": "f_cloth_bottom_310157",
-	"hair": "f_cloth_hair_310180",
+	"fullbody": "",
+	"top": "",
+	"bottom": "",
+	"hair": "",
 }
 const MALE_STARTERS := {
-	"fullbody": "m_cloth_fullbody_310148",
-	"top": "m_cloth_top_310000",
-	"bottom": "m_cloth_bottom_310009",
-	"hair": "m_cloth_hair_310188",
+	"fullbody": "",
+	"top": "",
+	"bottom": "",
+	"hair": "",
 }
 const STARTERS := {
 	AvatarProfile.FEMALE: FEMALE_STARTERS,
@@ -22,10 +22,10 @@ const STARTERS := {
 }
 # Female aliases preserve compatibility for existing scripts and version-4
 # tests while new code uses starter_for_gender().
-const STARTER_FULLBODY := "f_cloth_fullbody_310013"
-const STARTER_TOP := "f_cloth_top_310044"
-const STARTER_BOTTOM := "f_cloth_bottom_310157"
-const STARTER_HAIR := "f_cloth_hair_310180"
+const STARTER_FULLBODY := ""
+const STARTER_TOP := ""
+const STARTER_BOTTOM := ""
+const STARTER_HAIR := ""
 
 var inventory: InventoryModel
 var catalog: ItemCatalog

@@ -1,7 +1,7 @@
 extends SceneTree
 
-const FURNITURE_GLB := "res://assets/dev_model/furniture/furniture_decor_210000.glb"
-const CLOTH_GLB := "res://assets/dev_model/clothes/female/top/f_cloth_top_310044_Rig.glb"
+const FURNITURE_GLB := "res://assets/dev_model/character/dear_dear_male_rig_character.glb"
+const CLOTH_GLB := "res://assets/dev_model/character/dear_dear_female_rig_character.glb"
 
 
 func _initialize() -> void:
@@ -71,12 +71,12 @@ func _test_drafts(config: DearDearAssetToolConfig) -> void:
 func _test_id_audit(config: DearDearAssetToolConfig) -> void:
 	var index := DearDearAssetIdIndex.new()
 	index.rebuild()
-	assert(index.next_available(config.id_range("cloth")) == 310193)
-	assert(index.next_available(config.id_range("furniture")) == 210078)
+	var next_cloth_id := index.next_available(config.id_range("cloth"))
+	assert(next_cloth_id == 310000)
+	assert(not index.is_used("%06d" % next_cloth_id))
+	assert(index.next_available(config.id_range("furniture")) == 210000)
 	var collisions := index.duplicates()
-	assert(collisions.has("310148"))
-	assert(collisions["310148"].size() == 2)
-	assert(not collisions.has("210000"))
+	assert(collisions.is_empty())
 
 
 func _test_catalog(config: DearDearAssetToolConfig) -> void:
@@ -113,11 +113,16 @@ func _test_journal(config: DearDearAssetToolConfig) -> void:
 	draft.item_id = "210078"
 	draft.item_name = "Journal Test"
 	draft.refresh_derived(config)
-	assert(journal.save_state([draft], {"furniture/decor": {"yaw": 1.25}}))
+	assert(journal.save_state(
+		[draft],
+		{"furniture/decor": {"yaw": 1.25}},
+		{"ambient_energy": 0.8, "key_energy": 2.2, "fill_energy": 1.1, "rim_energy": 0.7}))
 	var state := journal.load_state()
 	assert(state.drafts.size() == 1)
 	assert(state.drafts[0].record_id == draft.record_id)
 	assert(is_equal_approx(float(state.camera_profiles["furniture/decor"].yaw), 1.25))
+	assert(is_equal_approx(float(state.lighting.ambient_energy), 0.8))
+	assert(is_equal_approx(float(state.lighting.key_energy), 2.2))
 
 
 func _test_sheets_response_parsing() -> void:
@@ -156,6 +161,10 @@ func _test_preview_and_capture() -> void:
 	assert(studio.validate_self_contained_glb(FURNITURE_GLB).ok)
 	var before_hash := FileAccess.get_sha256(FURNITURE_GLB)
 	assert(studio.load_glb(FURNITURE_GLB).ok)
+	studio.set_lighting({"ambient_energy": 0.8, "key_energy": 2.4, "fill_energy": 1.2, "rim_energy": 0.6})
+	var lighting := studio.get_lighting()
+	assert(is_equal_approx(float(lighting.ambient_energy), 0.8))
+	assert(is_equal_approx(float(lighting.key_energy), 2.4))
 	studio.set_camera_profile({"yaw": 1.0, "pitch": -0.2, "distance": 4.0, "pan_x": 0.1, "pan_y": -0.1})
 	var retained := studio.get_camera_profile()
 	assert(is_equal_approx(float(retained.yaw), 1.0))

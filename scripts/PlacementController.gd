@@ -724,7 +724,12 @@ func _ray_to_ground(screen_position: Vector2) -> Vector3:
 
 
 func create_placeable(instance: ItemInstance) -> PlacementItem:
+	if not instance or not catalog:
+		return null
 	var definition := catalog.get_definition(instance.definition_id)
+	if not definition:
+		push_warning("Skipping placeable with missing definition: %s" % instance.definition_id)
+		return null
 	var item := PlacementItemScript.new() as PlacementItem
 	item.name = definition.item_name
 	item.definition_id = instance.definition_id
@@ -781,6 +786,8 @@ func load_world(entries: Array) -> void:
 			"metadata": data.get("metadata", {}),
 		})
 		var item := create_placeable(instance)
+		if not item:
+			continue
 		item.configuration.merge(data.get("configuration", {}), true)
 		_placed_root.add_child(item)
 		item.set_placement_world(_array_to_vec3(data["position"]), _array_to_vec3(data["x_axis"]), _array_to_vec3(data["z_axis"]))
