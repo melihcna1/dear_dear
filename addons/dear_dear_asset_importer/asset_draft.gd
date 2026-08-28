@@ -59,7 +59,7 @@ func refresh_derived(config: DearDearAssetToolConfig) -> void:
 func validate(config: DearDearAssetToolConfig) -> PackedStringArray:
 	var errors := PackedStringArray()
 	if not FileAccess.file_exists(source_path):
-		errors.append("Source GLB no longer exists.")
+		errors.append("Source GLB no longer exists. Use Relink / Replace Source to select it again.")
 	if source_path.get_extension().to_lower() != "glb":
 		errors.append("Only .glb files are supported.")
 	if config.category(main_category).is_empty():

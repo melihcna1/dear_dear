@@ -77,11 +77,13 @@ Bu işlem proje varlıklarını yeniden tarar, Google E-Tablolar üzerindeki kal
 
 ### Adım 2: GLB dosyalarını ekleyin
 
-1. **Add GLB Files…** düğmesine basın.
+1. **Add GLB Files to Project…** düğmesine basın.
 2. Erişilebilir herhangi bir klasörden bir veya birden fazla `.glb` dosyası seçin.
 3. Düzenlemek ve önizlemek istediğiniz kuyruk satırını seçin.
 
 Her satır bağımsız bir taslaktır. Bir satırın öğe adını, kimliğini veya meta verilerini değiştirmek diğer satırları etkilemez.
+
+Seçilen GLB dosyaları projenin içindeki `asset_import_sources/` ham kaynak kutusuna kopyalanır. Böylece proje ZIP'lendiğinde kaynaklar da gider; klasördeki `.gdignore` işareti ise Godot'un bu ham dosyaları oyun varlığı olarak içe aktarmasını ve yönetilen çıktı çakışması saymasını engeller. **Open Source Folder** klasörü açar. Kuyruktaki kaynak silindiyse veya kaydı güncel bir GLB ile değiştirmek istiyorsanız **Relink / Replace Source…** kullanın.
 
 İçe aktarıcı, okunamayan dosyaları ve harici bağımlılıklar içeren GLB dosyalarını reddeder. Böyle bir modeli tekrar denemeden önce kendi içinde eksiksiz bir GLB olarak dışa aktarın veya yeniden paketleyin.
 
@@ -140,7 +142,7 @@ Yakalama işleminden önce şunları kontrol edin:
 - **Sheets: connected** görünmelidir.
 - Etkin kayıt için hata mesajı bulunmamalıdır.
 
-Temiz bir projede yerel denetim model çakışması bildirmemelidir. Eski kaynak modelleri işlenene kadar harici yeniden içe aktarma klasöründe tutun; kimlik içeren dosya adlarını doğrudan `res://assets` altına koymak bu kimlikleri yeniden yerel sahip olarak işaretler.
+Temiz bir projede yerel denetim model çakışması bildirmemelidir. Ham eski modelleri **Add GLB Files to Project…** veya **Open Source Folder** aracılığıyla `asset_import_sources/` içinde tutun; kimlik içeren dosya adlarını doğrudan `res://assets` altına koymak bu kimlikleri yeniden yerel sahip olarak işaretler.
 
 ### Adım 6: Görseli yakalayın ve kaydedin
 
@@ -194,7 +196,7 @@ Bu işlem uzaktaki satırları tamamlar veya günceller, E-Tablo durumunu `ready
 | **Synced** | Yerel çıktılar ve uzaktaki `ready` satırı tamamlanmıştır. | Sonucu doğrulayın; başka işlem gerekmez. |
 | **Error** | Son işlem başarısız olmuş veya doğrulama bir sorun bulmuştur. | Görüntülenen mesajı okuyun, nedeni düzeltin ve uygun işlemi tekrar deneyin. |
 
-Taslaklar, işlem ilerlemesi, kamera profilleri ve mutlak kaynak yolları `.godot/dear_dear_asset_importer/` altında saklanır. Bu durum günlüğe kaydedildiği için proje yeniden açıldığında kesintiye uğrayan çalışmalar normalde geri yüklenir.
+Taslaklar, işlem ilerlemesi, kamera profilleri ve proje içi kaynak yolları `.godot/dear_dear_asset_importer/` altında saklanır. Eski bir taslak hâlâ erişilebilen harici bir dosyayı gösteriyorsa proje yeniden açıldığında dosya otomatik olarak `asset_import_sources/` içine kopyalanır ve günlük yolu güncellenir.
 
 ## 7. Adlandırma kuralları
 
@@ -336,7 +338,7 @@ Kamera profili kategori/alt kategori tarafından paylaşılır. Temsilî bir mod
 
 ### Yerel denetim beklenmeyen bir kimlik çakışması bildiriyor
 
-Kimlik içeren bir GLB/FBX doğrudan projeye konmuş, iki kuyruk kaydı aynı kimliği kullanıyor veya yönetilen bir çıktı bu kimliğin sahibi olabilir. Tam sahibi görmek için denetim ipucunu ya da yakalama hata mesajını okuyun. İşlenmemiş eski kaynakları proje dışında tutun ve `res://assets` içine elle kopyalamak yerine **Add GLB Files…** ile ekleyin.
+Kimlik içeren bir GLB/FBX doğrudan `res://assets` altına konmuş, iki kuyruk kaydı aynı kimliği kullanıyor veya yönetilen bir çıktı bu kimliğin sahibi olabilir. Tam sahibi görmek için denetim ipucunu ya da yakalama hata mesajını okuyun. Ham GLB'leri **Add GLB Files to Project…** ile ekleyin; araç bunları oyun çıktılarıyla karışmayan `asset_import_sources/` kutusunda tutar.
 
 ## 12. Yapılandırma ve bakım
 

@@ -75,11 +75,13 @@ This rescans project assets, refreshes permanently claimed IDs from Google Sheet
 
 ### Step 2: Add GLB files
 
-1. Click **Add GLB Files…**.
+1. Click **Add GLB Files to Project…**.
 2. Select one or more `.glb` files from any accessible folder.
 3. Select a row in the queue to edit and preview it.
 
 Each row is an independent draft. Changing one row's item name, ID, or metadata does not change the other rows.
+
+Selected GLBs are copied into `asset_import_sources/` inside the project. This raw inbox is included when the project is zipped, but its `.gdignore` marker prevents Godot from importing those sources as game assets or treating them as managed output collisions. **Open Source Folder** opens the inbox. Use **Relink / Replace Source…** if a queued source was deleted or if you want the active record to use an updated GLB.
 
 The importer rejects unreadable files and GLBs with external dependencies. Convert or repack such a model as a self-contained GLB before trying again.
 
@@ -138,7 +140,7 @@ Before capture, check that:
 - **Sheets: connected** is shown.
 - No error is shown for the active record.
 
-The local audit should report no model collisions in a clean project. Keep legacy source models in the external re-import source folder until they are processed; placing their ID-bearing filenames directly below `res://assets` makes those IDs local owners again.
+The local audit should report no model collisions in a clean project. Keep raw legacy models in `asset_import_sources/`, using **Add GLB Files to Project…** or **Open Source Folder**; placing their ID-bearing filenames directly below `res://assets` makes those IDs local owners again.
 
 ### Step 6: Capture and save
 
@@ -192,7 +194,7 @@ For important assets, verify:
 | **Synced** | The local outputs and remote ready row are complete. | Verify the result; no further action is required. |
 | **Error** | The last operation failed or validation found a problem. | Read the displayed message, correct the cause, and retry the appropriate action. |
 
-Drafts, operation progress, camera profiles, and absolute source paths are saved under `.godot/dear_dear_asset_importer/`. Because this state is journaled, reopening the project normally restores interrupted work.
+Drafts, operation progress, camera profiles, and project-local source paths are saved under `.godot/dear_dear_asset_importer/`. When an older draft still points to an accessible external file, reopening the project automatically copies it into `asset_import_sources/` and updates the journal.
 
 ## 7. Naming rules
 
@@ -334,7 +336,7 @@ The camera profile is shared by category/subcategory. Adjust the profile using a
 
 ### The local audit reports an unexpected ID collision
 
-An ID-bearing GLB/FBX was placed directly inside the project, two queued records share an ID, or a managed output already owns it. Read the audit tooltip or capture error for the exact owner. Keep unprocessed legacy sources outside the project and add them through **Add GLB Files…** instead of copying them into `res://assets` manually.
+An ID-bearing GLB/FBX was placed directly under `res://assets`, two queued records share an ID, or a managed output already owns it. Read the audit tooltip or capture error for the exact owner. Add raw GLBs through **Add GLB Files to Project…** so they are stored in the ignored `asset_import_sources/` inbox instead of being mistaken for game outputs.
 
 ## 12. Configuration and maintenance
 

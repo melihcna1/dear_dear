@@ -1,5 +1,7 @@
 extends SceneTree
 
+const AssetSourceRepository := preload("res://addons/dear_dear_asset_importer/asset_source_repository.gd")
+const AssetImporterMainScript := preload("res://addons/dear_dear_asset_importer/asset_importer_main.gd")
 const FURNITURE_GLB := "res://assets/dev_model/character/dear_dear_male_rig_character.glb"
 const CLOTH_GLB := "res://assets/dev_model/character/dear_dear_female_rig_character.glb"
 
@@ -10,9 +12,11 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var config := DearDearAssetToolConfig.new()
+	assert(AssetImporterMainScript != null)
 	assert(config.load_from_disk(), config.error_message)
 	_test_ranges(config)
 	_test_naming(config)
+	_test_source_repository()
 	_test_drafts(config)
 	_test_id_audit(config)
 	_test_catalog(config)
@@ -52,6 +56,34 @@ func _test_naming(config: DearDearAssetToolConfig) -> void:
 		config, "food", "dessert", "unisex", "Banana Waffles", "130000", false)
 	assert(food_name == "food_dessert_banana_waffles")
 	assert(DearDearAssetNaming.csv_escape("hello, \"world\"") == "\"hello, \"\"world\"\"\"")
+
+
+func _test_source_repository() -> void:
+	var repository := AssetSourceRepository.new()
+	repository.root_path = "user://asset_importer_tests/source_inbox"
+	var incoming := ProjectSettings.globalize_path("user://asset_importer_tests/incoming/source.glb")
+	DirAccess.make_dir_recursive_absolute(incoming.get_base_dir())
+	var incoming_file := FileAccess.open(incoming, FileAccess.WRITE)
+	incoming_file.store_buffer(PackedByteArray([1, 2, 3, 4]))
+	incoming_file.close()
+	var first: Dictionary = repository.store(incoming, "cloth", "shoe", "female")
+	assert(first.ok)
+	assert(str(first.path).begins_with(repository.root_path))
+	assert(FileAccess.file_exists(ProjectSettings.globalize_path(str(first.path))))
+	assert(repository.find_by_filename("source.glb").size() == 1)
+	incoming_file = FileAccess.open(incoming, FileAccess.WRITE)
+	incoming_file.store_buffer(PackedByteArray([5, 6, 7, 8]))
+	incoming_file.close()
+	var collision_safe: Dictionary = repository.store(incoming, "cloth", "shoe", "female")
+	assert(collision_safe.ok)
+	assert(collision_safe.path != first.path)
+	var replaced: Dictionary = repository.store(incoming, "cloth", "shoe", "female", str(first.path), true)
+	assert(replaced.ok)
+	assert(replaced.path == first.path)
+	assert(FileAccess.get_sha256(ProjectSettings.globalize_path(str(first.path))) == FileAccess.get_sha256(incoming))
+	DirAccess.remove_absolute(incoming)
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(str(first.path)))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(str(collision_safe.path)))
 
 
 func _test_drafts(config: DearDearAssetToolConfig) -> void:

@@ -6,7 +6,7 @@ User manuals: [English](USER_MANUAL.md) · [Türkçe](USER_MANUAL_TR.md)
 
 ## Workflow
 
-1. Open **Asset Importer** and use **Add GLB Files…**. Only self-contained binary GLBs are accepted; source files are never moved or renamed.
+1. Open **Asset Importer** and use **Add GLB Files to Project…**. Only self-contained binary GLBs are accepted. The importer copies each selected source into the project-local `asset_import_sources/` inbox and leaves the original untouched.
 2. Edit the active row's category, subcategory, gender, item name, flags, and automatic/manual ID mode. Each queued file retains its own metadata. **Apply Category Settings to Selected** copies only the shared classification fields.
 3. Orbit with left-drag, pan with Shift-left or middle-drag, and zoom with the wheel. Camera profiles persist by category/subcategory. **Lighting Settings** adjusts ambient, key, fill, and rim energy for both the preview and saved PNG. **Reset Camera Angle** resets only the active profile.
 4. Configure the Apps Script `/exec` URL and shared token through **Sheets Settings**, then click **Refresh IDs**.
@@ -14,11 +14,12 @@ User manuals: [English](USER_MANUAL.md) · [Türkçe](USER_MANUAL_TR.md)
 6. Run **Export CSV / JSON** to upsert captured rows into `data/asset_catalog.json` and regenerate `data/asset_exports/asset_catalog.csv`.
 7. Run **Sync Google Sheets** to complete the reserved spreadsheet rows. All actions are idempotent by `record_id`.
 
-Drafts, incomplete operations, recent camera profiles, and absolute source paths are stored below ignored `.godot/dear_dear_asset_importer/`. Spreadsheet credentials remain in per-user Godot editor settings; the environment variables documented in `google_apps_script/SETUP.md` take precedence.
+Drafts, incomplete operations, recent camera profiles, and project-local source paths are stored below ignored `.godot/dear_dear_asset_importer/`. Spreadsheet credentials remain in per-user Godot editor settings; the environment variables documented in `google_apps_script/SETUP.md` take precedence.
 
 ## Safety and updates
 
-- Existing project assets are scanned for ID use and collisions but are never renamed or backfilled. Keep legacy source models outside the project until they are processed by the importer; copying ID-bearing source filenames directly into `res://assets` will correctly reserve those IDs.
+- Existing game assets below `res://assets` are scanned for ID use and collisions but are never renamed or backfilled. Raw sources belong in `res://asset_import_sources`, whose `.gdignore` marker prevents Godot from importing them as game assets. Do not place raw ID-bearing sources directly below `res://assets`.
+- **Open Source Folder** opens the raw inbox. **Relink / Replace Source…** repairs a missing source or updates the active record; captured records still require the explicit update confirmation.
 - New outputs cannot replace unrelated files. To recapture a record already owned by the managed catalog, enable the explicit update confirmation for that row.
 - Automatic allocation uses the highest permanently claimed ID plus one and does not recycle gaps.
 - Manual IDs may use a genuine gap, but every GLB/FBX filename, queued draft, managed catalog row, and Sheet reservation is still treated as an owner. Collision errors identify the local owner when available.

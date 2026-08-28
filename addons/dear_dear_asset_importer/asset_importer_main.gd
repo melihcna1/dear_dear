@@ -2,6 +2,7 @@
 class_name DearDearAssetImporterMain
 extends Control
 
+const AssetSourceRepository := preload("res://addons/dear_dear_asset_importer/asset_source_repository.gd")
 const STATUS_COLORS := {
 	DearDearAssetDraft.STATUS_DRAFT: Color(0.78, 0.80, 0.84),
 	DearDearAssetDraft.STATUS_RESERVED: Color(0.95, 0.77, 0.32),
@@ -15,6 +16,7 @@ var _config := DearDearAssetToolConfig.new()
 var _catalog := DearDearAssetCatalogRepository.new()
 var _id_index := DearDearAssetIdIndex.new()
 var _journal := DearDearAssetJournal.new()
+var _source_repository := AssetSourceRepository.new()
 var _sheets: DearDearSheetsClient
 var _studio: DearDearPreviewStudio
 var _drafts: Array[DearDearAssetDraft] = []
@@ -27,6 +29,7 @@ var _busy := false
 var _journal_save_queued := false
 
 var _file_dialog: FileDialog
+var _replace_source_dialog: FileDialog
 var _error_dialog: AcceptDialog
 var _settings_dialog: AcceptDialog
 var _settings_url: LineEdit
@@ -204,6 +207,14 @@ func _build_ui() -> void:
 	_file_dialog.add_filter("*.glb", "Binary glTF Models")
 	_file_dialog.files_selected.connect(_on_files_selected)
 	add_child(_file_dialog)
+	_replace_source_dialog = FileDialog.new()
+	_replace_source_dialog.title = "Relink or Replace Source GLB"
+	_replace_source_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	_replace_source_dialog.access = FileDialog.ACCESS_FILESYSTEM
+	_replace_source_dialog.use_native_dialog = true
+	_replace_source_dialog.add_filter("*.glb", "Binary glTF Models")
+	_replace_source_dialog.file_selected.connect(_on_replacement_file_selected)
+	add_child(_replace_source_dialog)
 
 	_error_dialog = AcceptDialog.new()
 	_error_dialog.title = "Asset Importer"
@@ -324,12 +335,27 @@ func _build_queue_panel(parent: Control) -> void:
 	_queue.item_clicked.connect(_on_queue_item_clicked)
 	_queue.item_activated.connect(_on_queue_item_selected)
 	box.add_child(_queue)
+	var source_actions := HBoxContainer.new()
+	box.add_child(source_actions)
+	var add_button := Button.new()
+	add_button.text = "Add GLB Files to Project…"
+	add_button.tooltip_text = "Copies selected GLBs into the project-local source inbox before queueing them."
+	add_button.pressed.connect(_open_file_dialog)
+	add_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	source_actions.add_child(add_button)
+	var source_folder_button := Button.new()
+	source_folder_button.text = "Open Source Folder"
+	source_folder_button.tooltip_text = "Opens the project-local raw GLB inbox in the system file browser."
+	source_folder_button.pressed.connect(_open_source_folder)
+	source_folder_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	source_actions.add_child(source_folder_button)
 	var queue_actions := HBoxContainer.new()
 	box.add_child(queue_actions)
-	var add_button := Button.new()
-	add_button.text = "Add GLB Files…"
-	add_button.pressed.connect(_open_file_dialog)
-	queue_actions.add_child(add_button)
+	var replace_source_button := Button.new()
+	replace_source_button.text = "Relink / Replace Source…"
+	replace_source_button.tooltip_text = "Copies a replacement GLB into the project and assigns it to the active record."
+	replace_source_button.pressed.connect(_open_replacement_source_dialog)
+	queue_actions.add_child(replace_source_button)
 	var remove_button := Button.new()
 	remove_button.text = "Remove Draft"
 	remove_button.pressed.connect(_remove_selected_drafts)
@@ -434,11 +460,16 @@ func _load_journal() -> void:
 	_lighting_profile = state.get("lighting", {}).duplicate(true)
 	_studio.set_lighting(_lighting_profile)
 	_lighting_profile = _studio.get_lighting()
+	var migrated_sources := 0
 	for row in state.get("drafts", []):
 		if row is Dictionary:
 			var draft := DearDearAssetDraft.from_dictionary(row)
 			if not draft.record_id.is_empty():
+				if _migrate_draft_source(draft):
+					migrated_sources += 1
 				_drafts.append(draft)
+	if migrated_sources > 0:
+		_queue_journal_save()
 
 
 func _populate_categories() -> void:
@@ -460,7 +491,65 @@ func _populate_subcategories(category_key: String, selected_key := "") -> void:
 
 
 func _open_file_dialog() -> void:
+	_file_dialog.current_dir = ProjectSettings.globalize_path(AssetSourceRepository.DEFAULT_ROOT)
 	_file_dialog.popup_centered_ratio(0.75)
+
+
+func _open_source_folder() -> void:
+	var absolute := ProjectSettings.globalize_path(AssetSourceRepository.DEFAULT_ROOT)
+	var directory_error := DirAccess.make_dir_recursive_absolute(absolute)
+	if directory_error not in [OK, ERR_ALREADY_EXISTS]:
+		_set_status("Could not create the project source folder.", true)
+		return
+	var open_error := OS.shell_open(absolute)
+	if open_error != OK:
+		_set_status("Could not open the project source folder.", true)
+
+
+func _open_replacement_source_dialog() -> void:
+	if _busy or _current_index < 0:
+		_set_status("Select a queued record first.", true)
+		return
+	_replace_source_dialog.current_dir = ProjectSettings.globalize_path(AssetSourceRepository.DEFAULT_ROOT)
+	_replace_source_dialog.popup_centered_ratio(0.75)
+
+
+func _on_replacement_file_selected(selected_path: String) -> void:
+	if _busy or _current_index < 0:
+		return
+	var validation := _studio.validate_self_contained_glb(selected_path)
+	if not validation.ok:
+		_set_status(str(validation.error), true)
+		return
+	var draft := _drafts[_current_index]
+	if draft.status in [
+		DearDearAssetDraft.STATUS_CAPTURED,
+		DearDearAssetDraft.STATUS_EXPORTED,
+		DearDearAssetDraft.STATUS_SYNCED,
+	] and not draft.overwrite_existing:
+		_set_status("Enable the update confirmation before replacing a captured record's source.", true)
+		return
+	var preferred_path := draft.source_path if _source_repository.is_managed(draft.source_path) else ""
+	var source_result := _source_repository.store(
+		selected_path, draft.main_category, draft.sub_category, draft.gender, preferred_path, true)
+	if not source_result.ok:
+		_set_status(str(source_result.error), true)
+		return
+	_apply_source_to_draft(draft, str(source_result.path), str(source_result.sha256))
+	if draft.status in [
+		DearDearAssetDraft.STATUS_CAPTURED,
+		DearDearAssetDraft.STATUS_EXPORTED,
+		DearDearAssetDraft.STATUS_SYNCED,
+	]:
+		draft.status = DearDearAssetDraft.STATUS_RESERVED
+	elif draft.status == DearDearAssetDraft.STATUS_ERROR:
+		draft.status = DearDearAssetDraft.STATUS_RESERVED if not draft.item_id.is_empty() else DearDearAssetDraft.STATUS_DRAFT
+	draft.refresh_derived(_config)
+	_refresh_queue()
+	_show_current_draft()
+	_load_current_preview()
+	_queue_journal_save()
+	_set_status("Source copied into the project and linked to %s." % draft.source_path.get_file())
 
 
 func _on_files_selected(paths: PackedStringArray) -> void:
@@ -468,15 +557,28 @@ func _on_files_selected(paths: PackedStringArray) -> void:
 	for draft in _drafts:
 		existing_sources[draft.source_path] = true
 	var added := 0
-	for path in paths:
+	for selected_path in paths:
+		var validation := _studio.validate_self_contained_glb(selected_path)
+		if not validation.ok:
+			_set_status("Skipped %s: %s" % [selected_path.get_file(), validation.error], true)
+			continue
+		var inferred := _config.infer_taxonomy(selected_path)
+		var inferred_category := str(inferred.get("main_category", "furniture"))
+		var inferred_subcategory := str(inferred.get("sub_category", ""))
+		if inferred_subcategory.is_empty() and not _config.subcategories(inferred_category).is_empty():
+			inferred_subcategory = str(_config.subcategories(inferred_category)[0].get("key", "general"))
+		var inferred_gender := str(inferred.get("gender", "unisex"))
+		var source_result := _source_repository.store(
+			selected_path, inferred_category, inferred_subcategory, inferred_gender,
+			_source_repository.canonical_path(selected_path) if _source_repository.is_managed(selected_path) else "")
+		if not source_result.ok:
+			_set_status("Skipped %s: %s" % [selected_path.get_file(), source_result.error], true)
+			continue
+		var path := str(source_result.path)
 		if existing_sources.has(path):
 			continue
-		var validation := _studio.validate_self_contained_glb(path)
-		if not validation.ok:
-			_set_status("Skipped %s: %s" % [path.get_file(), validation.error], true)
-			continue
 		var draft := DearDearAssetDraft.create(path)
-		var inferred := _config.infer_taxonomy(path)
+		draft.source_sha256 = str(source_result.sha256)
 		if inferred.has("main_category"):
 			draft.main_category = str(inferred.main_category)
 		if inferred.has("sub_category"):
@@ -487,6 +589,7 @@ func _on_files_selected(paths: PackedStringArray) -> void:
 			draft.gender = str(inferred.gender)
 		draft.refresh_derived(_config)
 		_drafts.append(draft)
+		existing_sources[path] = true
 		added += 1
 	_refresh_id_index_and_suggestions()
 	_refresh_queue()
@@ -494,6 +597,40 @@ func _on_files_selected(paths: PackedStringArray) -> void:
 		_select_index(_drafts.size() - added)
 		_set_status("Added %d GLB file(s)." % added)
 	_queue_journal_save()
+
+
+func _migrate_draft_source(draft: DearDearAssetDraft) -> bool:
+	var original_path := draft.source_path
+	if _source_repository.is_managed(original_path):
+		var canonical := _source_repository.canonical_path(original_path)
+		var canonical_absolute := ProjectSettings.globalize_path(canonical)
+		if FileAccess.file_exists(canonical_absolute):
+			_apply_source_to_draft(draft, canonical, FileAccess.get_sha256(canonical_absolute))
+			return canonical != original_path
+	if FileAccess.file_exists(ProjectSettings.globalize_path(original_path) if original_path.begins_with("res://") else original_path):
+		var inferred := _config.infer_taxonomy(original_path)
+		var result := _source_repository.store(
+			original_path,
+			str(inferred.get("main_category", draft.main_category)),
+			str(inferred.get("sub_category", draft.sub_category)),
+			str(inferred.get("gender", draft.gender)))
+		if result.ok:
+			_apply_source_to_draft(draft, str(result.path), str(result.sha256))
+			return draft.source_path != original_path
+	var matches := _source_repository.find_by_filename(original_path.get_file())
+	if matches.size() == 1:
+		var matched_path := str(matches[0])
+		_apply_source_to_draft(draft, matched_path, FileAccess.get_sha256(ProjectSettings.globalize_path(matched_path)))
+		return matched_path != original_path
+	return false
+
+
+func _apply_source_to_draft(draft: DearDearAssetDraft, source_path: String, source_hash: String) -> void:
+	draft.source_path = source_path
+	draft.source_sha256 = source_hash
+	if draft.error_message.begins_with("Source GLB no longer exists"):
+		draft.error_message = ""
+	draft.updated_at_utc = DearDearAssetDraft.now_utc()
 
 
 func _refresh_queue() -> void:
@@ -887,6 +1024,17 @@ func _capture_draft(draft: DearDearAssetDraft) -> Dictionary:
 	var validation_errors := draft.validate(_config)
 	if not validation_errors.is_empty():
 		return {"ok": false, "error": " ".join(validation_errors)}
+	var current_source_hash := FileAccess.get_sha256(
+		ProjectSettings.globalize_path(draft.source_path) if draft.source_path.begins_with("res://") else draft.source_path)
+	if current_source_hash != draft.source_sha256:
+		if draft.status in [
+			DearDearAssetDraft.STATUS_CAPTURED,
+			DearDearAssetDraft.STATUS_EXPORTED,
+			DearDearAssetDraft.STATUS_SYNCED,
+		] and not draft.overwrite_existing:
+			return {"ok": false, "error": "The project-local source changed. Enable the update confirmation before recapturing it."}
+		draft.source_sha256 = current_source_hash
+		draft.updated_at_utc = DearDearAssetDraft.now_utc()
 	# Check manual IDs before calling reserve so a known local collision does not
 	# consume a permanent remote reservation and the user sees its exact owner.
 	if not draft.auto_id and draft.status in [DearDearAssetDraft.STATUS_DRAFT, DearDearAssetDraft.STATUS_ERROR]:
