@@ -34,6 +34,9 @@ var _drag_button := MOUSE_BUTTON_NONE
 var _last_mouse := Vector2.ZERO
 var _preview_poll_timer: Timer
 var _preview_poll_attempts := 0
+var _preview_polls_to_skip := 0
+var _model_generation := 0
+var _loaded_source_path := ""
 
 
 func _ready() -> void:
@@ -70,7 +73,10 @@ func load_glb(path: String) -> Dictionary:
 	var scene_root: Node = null
 	var project_resource_path := _project_resource_path(path)
 	if not project_resource_path.is_empty() and ResourceLoader.exists(project_resource_path):
-		var packed := ResourceLoader.load(project_resource_path) as PackedScene
+		# Ignore ResourceLoader's scene cache. A model may have just been
+		# reimported or replaced while the editor remains open.
+		var packed := ResourceLoader.load(
+			project_resource_path, "", ResourceLoader.CACHE_MODE_IGNORE) as PackedScene
 		if packed:
 			scene_root = packed.instantiate()
 	else:
@@ -88,9 +94,10 @@ func load_glb(path: String) -> Dictionary:
 		_model = Node3D.new()
 		_model.add_child(scene_root)
 	_normalizer.add_child(_model)
+	_loaded_source_path = path
 	_normalize_model()
 	_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	_queue_preview_refresh()
+	_queue_preview_refresh(true)
 	return {"ok": true}
 
 
@@ -107,13 +114,20 @@ func _project_resource_path(path: String) -> String:
 
 
 func clear_model() -> void:
+	_model_generation += 1
 	if _model and is_instance_valid(_model):
-		_model.queue_free()
+		# Remove and free synchronously so the SubViewport cannot render one
+		# more frame of the previously selected queue item.
+		if _model.get_parent():
+			_model.get_parent().remove_child(_model)
+		_model.free()
 	_model = null
+	_loaded_source_path = ""
 	_normalizer.position = Vector3.ZERO
 	_normalizer.scale = Vector3.ONE
 	_presented_texture = null
 	_preview_poll_attempts = 0
+	_preview_polls_to_skip = 0
 	if _preview_poll_timer:
 		_preview_poll_timer.stop()
 	queue_redraw()
@@ -168,6 +182,7 @@ func reset_lighting() -> void:
 func capture_png(path: String) -> Dictionary:
 	if not _model:
 		return {"ok": false, "error": "Load a model before capturing."}
+	var capture_generation := _model_generation
 	# Keep the studio live and allow imported meshes/materials to reach the
 	# RenderingServer before reading the render target. A single UPDATE_ONCE
 	# frame can return a valid-sized but fully transparent image in the editor.
@@ -175,6 +190,8 @@ func capture_png(path: String) -> Dictionary:
 	var image: Image = null
 	for unused in 12:
 		await RenderingServer.frame_post_draw
+		if capture_generation != _model_generation:
+			return {"ok": false, "error": "The selected preview model changed during capture. Try again."}
 		var viewport_texture := _viewport.get_texture()
 		if not viewport_texture:
 			continue
@@ -306,11 +323,15 @@ func _normalize_model() -> void:
 	_normalizer.position = -center * uniform_scale
 
 
-func _queue_preview_refresh() -> void:
+func _queue_preview_refresh(skip_initial_polls := false) -> void:
 	if not _model or not _viewport:
 		return
 	_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	_preview_poll_attempts = 250
+	if skip_initial_polls:
+		# Let the RenderingServer discard the old scenario before accepting a
+		# visible frame for the newly selected model.
+		_preview_polls_to_skip = 2
 	if _preview_poll_timer and _preview_poll_timer.is_stopped():
 		_preview_poll_timer.start()
 
@@ -321,6 +342,9 @@ func _poll_preview_frame() -> void:
 		return
 	_preview_poll_attempts -= 1
 	_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	if _preview_polls_to_skip > 0:
+		_preview_polls_to_skip -= 1
+		return
 	if DisplayServer.get_name() == "headless":
 		return
 	var viewport_texture := _viewport.get_texture()
@@ -357,6 +381,14 @@ func _present_preview_image(image: Image) -> void:
 
 func get_presented_texture() -> ImageTexture:
 	return _presented_texture
+
+
+func get_loaded_source_path() -> String:
+	return _loaded_source_path
+
+
+func get_model_instance_id() -> int:
+	return _model.get_instance_id() if _model and is_instance_valid(_model) else 0
 
 
 func _calculate_bounds(node: Node, parent_transform: Transform3D) -> AABB:

@@ -310,6 +310,14 @@ Dosyanın:
 
 kontrol edin. Gerekirse modeli kendi içinde eksiksiz ikili glTF/GLB olarak yeniden dışa aktarın.
 
+### Godot `Task 'reimport' already exists` hatası veriyor
+
+İçe aktarıcı, yakalamadan sonra artık ikinci bir dosya sistemi taramasını zorla başlatmaz. Mesaj eski bir eklenti örneğinden geldiyse eklentiyi kapatıp yeniden etkinleştirin veya tekrar denemeden önce Godot'u yeniden başlatın. FileSystem panelinin oluşturulan GLB, çıkarılan dokular ve PNG içe aktarmasını bitirmesini bekleyin.
+
+### Başka bir kuyruk satırı seçildiğinde eski önizleme kalıyor
+
+Güncel kuyruk seçim davranışını yüklemek için eklentiyi veya Godot'u yeniden başlatın. Çoklu seçim modunda son tıkladığınız satır etkin önizleme olur; seçili satırlar çıktı işlemlerinin hangi kayıtları işleyeceğini belirlemeye devam eder.
+
 ### Kimlik reddediliyor
 
 Kimlik kategori aralığının dışında, rezerve edilmiş bir blokta, daha önce alınmış veya mevcut kuyrukta yinelenmiş olabilir. Manuel kimlik gerçek bir boşluğu doldurabilir; ancak E-Tabloda boş görünen bir kimlik mevcut bir yerel GLB/FBX dosya adı veya katalog kaydı tarafından kullanılıyor olabilir. Yerel çakışma mesajı artık bu sahibi gösterir. **Refresh IDs** düğmesine basın, bildirilen yolu/kaydı inceleyin, kategoriyi doğrulayın ve normalde **Auto** atamaya geri dönün.

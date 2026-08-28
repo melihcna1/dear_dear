@@ -320,7 +320,9 @@ func _build_queue_panel(parent: Control) -> void:
 	_queue.name = "file_item_list"
 	_queue.select_mode = ItemList.SELECT_MULTI
 	_queue.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_queue.item_selected.connect(_on_queue_item_selected)
+	_queue.multi_selected.connect(_on_queue_multi_selected)
+	_queue.item_clicked.connect(_on_queue_item_clicked)
+	_queue.item_activated.connect(_on_queue_item_selected)
 	box.add_child(_queue)
 	var queue_actions := HBoxContainer.new()
 	box.add_child(queue_actions)
@@ -523,7 +525,18 @@ func _select_index(index: int) -> void:
 
 
 func _on_queue_item_selected(index: int) -> void:
-	_select_index(index)
+	if index != _current_index:
+		_select_index(index)
+
+
+func _on_queue_multi_selected(index: int, selected: bool) -> void:
+	if selected:
+		_on_queue_item_selected(index)
+
+
+func _on_queue_item_clicked(index: int, _position: Vector2, mouse_button_index: int) -> void:
+	if mouse_button_index == MOUSE_BUTTON_LEFT:
+		_on_queue_item_selected(index)
 
 
 func _show_current_draft() -> void:
@@ -852,7 +865,6 @@ func _capture_selected() -> void:
 	_show_current_draft()
 	_load_current_preview()
 	_update_action_state()
-	EditorInterface.get_resource_filesystem().scan()
 	if completed_all:
 		_set_status("Capture complete. Next: Export CSV / JSON, then Sync Google Sheets.")
 

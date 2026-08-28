@@ -22,5 +22,6 @@ Drafts, incomplete operations, recent camera profiles, and absolute source paths
 - New outputs cannot replace unrelated files. To recapture a record already owned by the managed catalog, enable the explicit update confirmation for that row.
 - Automatic allocation uses the highest permanently claimed ID plus one and does not recycle gaps.
 - Manual IDs may use a genuine gap, but every GLB/FBX filename, queued draft, managed catalog row, and Sheet reservation is still treated as an owner. Collision errors identify the local owner when available.
+- The queue uses Godot's multi-selection signal for deterministic active-preview switching. Superseded preview scenes are freed immediately, and the plugin lets Godot's filesystem watcher import newly written assets instead of forcing a second scan during an active import.
 - Preview and **Temporary Capture Test** work without Sheets. Final project asset writes require a successful server reservation.
 - Category labels, active ranges, filename prefixes, gender rules, optional ID behavior, and destination paths are configured in `data/asset_import_categories.json`.

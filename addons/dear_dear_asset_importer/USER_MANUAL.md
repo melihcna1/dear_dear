@@ -308,6 +308,14 @@ Confirm that the file:
 
 Re-export it as a self-contained binary glTF/GLB if necessary.
 
+### Godot reports `Task 'reimport' already exists`
+
+The importer does not manually start a second filesystem scan after capture. If this message came from an older plugin instance, disable and re-enable the plugin or restart Godot before retrying. Let the FileSystem dock finish importing the generated GLB, extracted textures, and PNG.
+
+### Selecting another queue row leaves the old preview visible
+
+Restart or reload the plugin to pick up the current queue-selection behavior. In multi-select mode, the last row you click becomes the active preview; selected rows still determine which records output actions process.
+
 ### ID is rejected
 
 The ID may be outside the category range, in a reserved block, already claimed, or duplicated in the current queue. A manual ID may fill a genuine gap, but an apparently empty Sheet slot can still be owned by an existing local GLB/FBX filename or catalog record. Local collision errors show that owner. Click **Refresh IDs**, inspect the reported path/record, confirm the category, and normally return to **Auto** allocation.
