@@ -203,7 +203,10 @@ func _build_ui() -> void:
 	_file_dialog.title = "Select GLB Files"
 	_file_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILES
 	_file_dialog.access = FileDialog.ACCESS_FILESYSTEM
-	_file_dialog.use_native_dialog = true
+	# Godot's embedded picker is used intentionally. The Windows native picker
+	# can retain and resubmit the previous filename even after another row is
+	# highlighted, which made the importer appear to ignore model changes.
+	_file_dialog.use_native_dialog = false
 	_file_dialog.add_filter("*.glb", "Binary glTF Models")
 	_file_dialog.files_selected.connect(_on_files_selected)
 	add_child(_file_dialog)
@@ -211,7 +214,7 @@ func _build_ui() -> void:
 	_replace_source_dialog.title = "Relink or Replace Source GLB"
 	_replace_source_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
 	_replace_source_dialog.access = FileDialog.ACCESS_FILESYSTEM
-	_replace_source_dialog.use_native_dialog = true
+	_replace_source_dialog.use_native_dialog = false
 	_replace_source_dialog.add_filter("*.glb", "Binary glTF Models")
 	_replace_source_dialog.file_selected.connect(_on_replacement_file_selected)
 	add_child(_replace_source_dialog)
@@ -492,6 +495,9 @@ func _populate_subcategories(category_key: String, selected_key := "") -> void:
 
 func _open_file_dialog() -> void:
 	_file_dialog.current_dir = ProjectSettings.globalize_path(AssetSourceRepository.DEFAULT_ROOT)
+	# Native Windows dialogs retain the previously opened filename. That makes
+	# pressing Open after merely hovering another row submit the old GLB again.
+	_file_dialog.current_file = ""
 	_file_dialog.popup_centered_ratio(0.75)
 
 
@@ -511,6 +517,8 @@ func _open_replacement_source_dialog() -> void:
 		_set_status("Select a queued record first.", true)
 		return
 	_replace_source_dialog.current_dir = ProjectSettings.globalize_path(AssetSourceRepository.DEFAULT_ROOT)
+	# Apply the same stale-native-filename guard as the multi-file picker.
+	_replace_source_dialog.current_file = ""
 	_replace_source_dialog.popup_centered_ratio(0.75)
 
 
@@ -554,9 +562,12 @@ func _on_replacement_file_selected(selected_path: String) -> void:
 
 func _on_files_selected(paths: PackedStringArray) -> void:
 	var existing_sources := {}
-	for draft in _drafts:
-		existing_sources[draft.source_path] = true
+	for index in _drafts.size():
+		existing_sources[_drafts[index].source_path] = index
 	var added := 0
+	var already_queued := 0
+	var existing_preview_target_index := -1
+	var new_preview_target_index := -1
 	for selected_path in paths:
 		var validation := _studio.validate_self_contained_glb(selected_path)
 		if not validation.ok:
@@ -576,6 +587,9 @@ func _on_files_selected(paths: PackedStringArray) -> void:
 			continue
 		var path := str(source_result.path)
 		if existing_sources.has(path):
+			already_queued += 1
+			if existing_preview_target_index < 0:
+				existing_preview_target_index = int(existing_sources[path])
 			continue
 		var draft := DearDearAssetDraft.create(path)
 		draft.source_sha256 = str(source_result.sha256)
@@ -589,13 +603,27 @@ func _on_files_selected(paths: PackedStringArray) -> void:
 			draft.gender = str(inferred.gender)
 		draft.refresh_derived(_config)
 		_drafts.append(draft)
-		existing_sources[path] = true
+		var new_index := _drafts.size() - 1
+		existing_sources[path] = new_index
+		if new_preview_target_index < 0:
+			new_preview_target_index = new_index
 		added += 1
 	_refresh_id_index_and_suggestions()
 	_refresh_queue()
-	if added > 0:
-		_select_index(_drafts.size() - added)
+	# Native multi-select dialogs can occasionally return the stale previous file
+	# together with the file the user just selected. Always show the newly added
+	# draft in that case; fall back to reloading an existing draft only when no
+	# new source was received.
+	var preview_target_index: int = (
+		new_preview_target_index if new_preview_target_index >= 0 else existing_preview_target_index)
+	if preview_target_index >= 0:
+		_select_index(preview_target_index)
+	if added > 0 and already_queued > 0:
+		_set_status("Added %d GLB file(s); selected %d existing queued file(s)." % [added, already_queued])
+	elif added > 0:
 		_set_status("Added %d GLB file(s)." % added)
+	elif already_queued > 0 and preview_target_index >= 0:
+		_set_status("This GLB was already queued. Selected and reloaded %s." % _drafts[preview_target_index].source_path.get_file())
 	_queue_journal_save()
 
 

@@ -37,6 +37,9 @@ var _preview_poll_attempts := 0
 var _preview_polls_to_skip := 0
 var _model_generation := 0
 var _loaded_source_path := ""
+var _presented_signature := 0
+var _rejected_preview_signature := 0
+var _preview_fallback_image: Image
 
 
 func _ready() -> void:
@@ -66,7 +69,14 @@ func _draw() -> void:
 
 
 func load_glb(path: String) -> Dictionary:
+	var previous_source_path := _loaded_source_path
+	var previous_signature := _presented_signature
 	clear_model()
+	# A SubViewport may expose its last rendered frame for several editor ticks
+	# after its old model was freed. Remember that frame only when switching to a
+	# different source, so the polling loop cannot publish it as the new preview.
+	if not previous_source_path.is_empty() and previous_source_path != path:
+		_rejected_preview_signature = previous_signature
 	var dependency_result := validate_self_contained_glb(path)
 	if not dependency_result.ok:
 		return dependency_result
@@ -93,7 +103,12 @@ func load_glb(path: String) -> Dictionary:
 		if Engine.is_editor_hint():
 			mesh_conversion = GLTFDocumentExtensionConvertImporterMesh.new()
 			GLTFDocument.register_gltf_document_extension(mesh_conversion, true)
-		var error := document.append_from_file(path, state)
+		# Files in asset_import_sources are deliberately hidden from Godot's
+		# importer with .gdignore. GLTFDocument therefore needs the real OS path;
+		# passing res:// here fails with ERR_FILE_CANT_OPEN even though validation
+		# can read the file from disk.
+		var load_path := ProjectSettings.globalize_path(path) if path.begins_with("res://") else path
+		var error := document.append_from_file(load_path, state)
 		if error == OK:
 			scene_root = document.generate_scene(state)
 		if mesh_conversion:
@@ -145,6 +160,8 @@ func clear_model() -> void:
 	_presented_texture = null
 	_preview_poll_attempts = 0
 	_preview_polls_to_skip = 0
+	_rejected_preview_signature = 0
+	_preview_fallback_image = null
 	if _preview_poll_timer:
 		_preview_poll_timer.stop()
 	queue_redraw()
@@ -334,9 +351,12 @@ func _normalize_model() -> void:
 		_normalizer.scale = Vector3.ONE
 		return
 	var center := bounds.position + bounds.size * 0.5
-	var maximum_dimension := maxf(bounds.size.x, maxf(bounds.size.y, bounds.size.z))
-	# Leave enough space for perspective rotation and asymmetric models.
-	var uniform_scale := 1.55 / maxf(maximum_dimension, 0.001)
+	# Frame the full AABB diagonal instead of only its largest axis. The diagonal
+	# is the diameter of a sphere enclosing the model, so wide/deep furniture
+	# remains inside the image when the default angled camera rotates that box.
+	# This also makes orbiting safe without category-specific framing hacks.
+	var bounding_sphere_diameter := maxf(bounds.size.length(), 0.001)
+	var uniform_scale := 1.55 / bounding_sphere_diameter
 	_normalizer.scale = Vector3.ONE * uniform_scale
 	_normalizer.position = -center * uniform_scale
 
@@ -356,6 +376,10 @@ func _queue_preview_refresh(skip_initial_polls := false) -> void:
 
 func _poll_preview_frame() -> void:
 	if not _model or not is_instance_valid(_viewport) or _preview_poll_attempts <= 0:
+		if _model and _preview_fallback_image and not _preview_fallback_image.is_empty():
+			_present_preview_image(_preview_fallback_image)
+		_preview_fallback_image = null
+		_rejected_preview_signature = 0
 		_preview_poll_timer.stop()
 		return
 	_preview_poll_attempts -= 1
@@ -370,7 +394,13 @@ func _poll_preview_frame() -> void:
 		return
 	var image: Image = viewport_texture.get_image()
 	if image and _image_has_visible_content(image):
+		var signature := _image_signature(image)
+		if _rejected_preview_signature != 0 and signature == _rejected_preview_signature:
+			_preview_fallback_image = image
+			return
 		_present_preview_image(image)
+		_preview_fallback_image = null
+		_rejected_preview_signature = 0
 		_preview_poll_timer.stop()
 
 
@@ -393,6 +423,7 @@ func _image_has_visible_content(image: Image) -> bool:
 func _present_preview_image(image: Image) -> void:
 	if image.is_empty():
 		return
+	_presented_signature = _image_signature(image)
 	if _presented_texture:
 		_presented_texture.update(image)
 	else:
@@ -402,6 +433,18 @@ func _present_preview_image(image: Image) -> void:
 
 func get_presented_texture() -> ImageTexture:
 	return _presented_texture
+
+
+func get_presented_signature() -> int:
+	return _presented_signature
+
+
+func _image_signature(image: Image) -> int:
+	if not image or image.is_empty():
+		return 0
+	var sample := image.duplicate()
+	sample.resize(64, 64, Image.INTERPOLATE_LANCZOS)
+	return hash(sample.get_data())
 
 
 func get_loaded_source_path() -> String:
