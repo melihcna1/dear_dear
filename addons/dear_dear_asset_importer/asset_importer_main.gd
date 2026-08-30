@@ -333,6 +333,10 @@ func _build_queue_panel(parent: Control) -> void:
 	_queue = ItemList.new()
 	_queue.name = "file_item_list"
 	_queue.select_mode = ItemList.SELECT_MULTI
+	# Keep the queue visible even when the right panel is inside a ScrollContainer.
+	# Without a minimum height, selected rows can collapse to zero height and make
+	# stale multi-selection impossible for the user to see.
+	_queue.custom_minimum_size = Vector2(0, 150)
 	_queue.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_queue.multi_selected.connect(_on_queue_multi_selected)
 	_queue.item_clicked.connect(_on_queue_item_clicked)
@@ -623,7 +627,17 @@ func _on_files_selected(paths: PackedStringArray) -> void:
 	elif added > 0:
 		_set_status("Added %d GLB file(s)." % added)
 	elif already_queued > 0 and preview_target_index >= 0:
-		_set_status("This GLB was already queued. Selected and reloaded %s." % _drafts[preview_target_index].source_path.get_file())
+		var selected_draft := _drafts[preview_target_index]
+		if selected_draft.status in [
+			DearDearAssetDraft.STATUS_CAPTURED,
+			DearDearAssetDraft.STATUS_EXPORTED,
+			DearDearAssetDraft.STATUS_SYNCED,
+		]:
+			_set_status(
+				"This GLB is already %s. Selected only this record; enable update confirmation only if you intend to replace its outputs."
+				% selected_draft.status)
+		else:
+			_set_status("This GLB was already queued. Selected and reloaded %s." % selected_draft.source_path.get_file())
 	_queue_journal_save()
 
 
@@ -679,22 +693,34 @@ func _refresh_queue() -> void:
 	_update_action_state()
 
 
-func _select_index(index: int) -> void:
+func _select_index(index: int, preserve_multi_selection := false) -> void:
 	if index < 0 or index >= _drafts.size():
 		_current_index = -1
 		_clear_form()
 		return
 	_current_index = index
-	_queue.select(index, false)
+	if not preserve_multi_selection:
+		# Programmatic navigation (adding/reloading a GLB) means "work on this
+		# record now". Clear older selections so output actions cannot silently
+		# process previously active rows.
+		_queue.deselect_all()
+		_queue.select(index, true)
+	# For a user-generated ItemList signal, Godot has already applied the normal,
+	# Ctrl, or Shift selection before this method runs. Do not select again here:
+	# doing so would undo a Ctrl-deselect.
 	_show_current_draft()
 	_load_current_preview()
+	_update_action_state()
 
 
 func _on_queue_item_selected(index: int) -> void:
 	if _busy:
 		return
 	if index != _current_index:
-		_select_index(index)
+		# The ItemList has already applied normal/Ctrl/Shift selection semantics.
+		# Preserve that explicit user selection for the dedicated shared-metadata
+		# action, while only changing which record is displayed.
+		_select_index(index, true)
 
 
 func _on_queue_multi_selected(index: int, selected: bool) -> void:
@@ -703,7 +729,10 @@ func _on_queue_multi_selected(index: int, selected: bool) -> void:
 
 
 func _on_queue_item_clicked(index: int, _position: Vector2, mouse_button_index: int) -> void:
-	if mouse_button_index == MOUSE_BUTTON_LEFT and not _busy:
+	# A Ctrl-click on a selected row emits item_clicked after deselecting it. Only
+	# activate rows that remain selected so the click cannot reselect or process a
+	# record the user intentionally removed from the shared-metadata selection.
+	if mouse_button_index == MOUSE_BUTTON_LEFT and not _busy and _queue.is_selected(index):
 		_on_queue_item_selected(index)
 
 
@@ -738,6 +767,7 @@ func _show_current_draft() -> void:
 	]
 	_update_next_id_label(draft.main_category)
 	_updating_form = false
+	_update_action_state()
 
 
 func _clear_form() -> void:
@@ -911,22 +941,20 @@ func _apply_metadata_to_selected() -> void:
 
 
 func _remove_selected_drafts() -> void:
-	var indices := _selected_indices()
-	var removed := 0
-	var removed_reserved := false
-	for position in range(indices.size() - 1, -1, -1):
-		var index := indices[position]
-		if _drafts[index].status not in [
-			DearDearAssetDraft.STATUS_DRAFT,
-			DearDearAssetDraft.STATUS_ERROR,
-			DearDearAssetDraft.STATUS_RESERVED,
-		]:
-			_set_status("Captured, exported, or synced records cannot be removed from the queue.", true)
-			continue
-		removed_reserved = removed_reserved or _drafts[index].status == DearDearAssetDraft.STATUS_RESERVED
-		_drafts.remove_at(index)
-		removed += 1
-	_current_index = mini(_current_index, _drafts.size() - 1)
+	if _current_index < 0 or _current_index >= _drafts.size():
+		_set_status("Select a draft to remove.", true)
+		return
+	var index := _current_index
+	var removed_reserved := _drafts[index].status == DearDearAssetDraft.STATUS_RESERVED
+	if _drafts[index].status not in [
+		DearDearAssetDraft.STATUS_DRAFT,
+		DearDearAssetDraft.STATUS_ERROR,
+		DearDearAssetDraft.STATUS_RESERVED,
+	]:
+		_set_status("Captured, exported, or synced records cannot be removed from the queue.", true)
+		return
+	_drafts.remove_at(index)
+	_current_index = mini(index, _drafts.size() - 1)
 	_refresh_id_index_and_suggestions()
 	_refresh_queue()
 	if _current_index >= 0:
@@ -934,9 +962,8 @@ func _remove_selected_drafts() -> void:
 	else:
 		_clear_form()
 	_queue_journal_save()
-	if removed > 0:
-		var suffix := " Any remotely reserved IDs remain permanently reserved." if removed_reserved else ""
-		_set_status("Removed %d queued record(s).%s" % [removed, suffix])
+	var suffix := " Its remotely reserved ID remains permanently reserved." if removed_reserved else ""
+	_set_status("Removed the current queued record.%s" % suffix)
 
 
 func _refresh_id_index_and_suggestions(refresh_form := true) -> void:
@@ -1015,24 +1042,20 @@ func _refresh_remote_snapshot() -> void:
 func _capture_selected() -> void:
 	if _busy:
 		return
-	_commit_form_to_draft()
-	var indices := _selected_indices()
-	if indices.is_empty():
-		_set_status("Select one or more queued files.", true)
+	if _current_index < 0 or _current_index >= _drafts.size():
+		_set_status("Select a queued file.", true)
 		return
+	_commit_form_to_draft()
+	var draft := _drafts[_current_index]
 	_busy = true
 	_update_action_state()
-	var completed_all := true
-	for index in indices:
-		var draft := _drafts[index]
-		_set_status("Preparing %s…" % draft.source_path.get_file())
-		var result: Dictionary = await _capture_draft(draft)
-		if not result.ok:
-			draft.status = DearDearAssetDraft.STATUS_ERROR if draft.status == DearDearAssetDraft.STATUS_DRAFT else draft.status
-			draft.error_message = str(result.error)
-			_set_status("%s: %s" % [draft.source_path.get_file(), draft.error_message], true)
-			completed_all = false
-			break
+	_set_status("Preparing current record: %s…" % draft.source_path.get_file())
+	var result: Dictionary = await _capture_draft(draft)
+	if not result.ok:
+		draft.status = DearDearAssetDraft.STATUS_ERROR if draft.status == DearDearAssetDraft.STATUS_DRAFT else draft.status
+		draft.error_message = str(result.error)
+		_set_status("%s: %s" % [draft.source_path.get_file(), draft.error_message], true)
+	else:
 		draft.status = DearDearAssetDraft.STATUS_CAPTURED
 		draft.error_message = ""
 		draft.updated_at_utc = DearDearAssetDraft.now_utc()
@@ -1044,8 +1067,8 @@ func _capture_selected() -> void:
 	_show_current_draft()
 	_load_current_preview()
 	_update_action_state()
-	if completed_all:
-		_set_status("Capture complete. Next: Export CSV / JSON, then Sync Google Sheets.")
+	if result.ok:
+		_set_status("Current record captured. Next: Export CSV / JSON, then Sync Google Sheets.")
 
 
 func _capture_draft(draft: DearDearAssetDraft) -> Dictionary:
@@ -1305,26 +1328,27 @@ func _temporary_capture() -> void:
 func _export_selected() -> void:
 	if _busy:
 		return
-	var selected: Array = []
-	for index in _selected_indices():
-		var draft := _drafts[index]
-		if draft.status not in [DearDearAssetDraft.STATUS_CAPTURED, DearDearAssetDraft.STATUS_EXPORTED, DearDearAssetDraft.STATUS_SYNCED]:
-			_show_error("Capture every selected record before exporting.")
-			return
-		selected.append(draft)
-	var result := _catalog.upsert_drafts(selected)
+	if _current_index < 0 or _current_index >= _drafts.size():
+		_show_error("Select a captured record first.")
+		return
+	_commit_form_to_draft()
+	var draft := _drafts[_current_index]
+	if draft.status not in [DearDearAssetDraft.STATUS_CAPTURED, DearDearAssetDraft.STATUS_EXPORTED, DearDearAssetDraft.STATUS_SYNCED]:
+		_show_error("Capture the current record before exporting.")
+		return
+	var result := _catalog.upsert_drafts([draft])
 	if not result.ok:
 		_show_error(str(result.error))
 		return
-	for draft in selected:
-		if draft.status != DearDearAssetDraft.STATUS_SYNCED:
-			draft.status = DearDearAssetDraft.STATUS_EXPORTED
+	if draft.status != DearDearAssetDraft.STATUS_SYNCED:
+		draft.status = DearDearAssetDraft.STATUS_EXPORTED
 	_refresh_id_index_and_suggestions()
 	_refresh_queue()
 	_show_current_draft()
 	_queue_journal_save()
-	EditorInterface.get_resource_filesystem().update_file(DearDearAssetCatalogRepository.CATALOG_PATH)
-	_set_status("Exported %d record(s) to JSON and CSV. Next: Sync Google Sheets." % selected.size())
+	if Engine.is_editor_hint():
+		EditorInterface.get_resource_filesystem().update_file(DearDearAssetCatalogRepository.CATALOG_PATH)
+	_set_status("Exported the current record to JSON and CSV. Next: Sync Google Sheets.")
 
 
 func _sync_selected() -> void:
@@ -1333,35 +1357,29 @@ func _sync_selected() -> void:
 	if not _sheets.is_configured():
 		_show_error("Configure the Sheets webhook URL and token first.")
 		return
-	var rows: Array = []
-	var selected_drafts: Array[DearDearAssetDraft] = []
-	for index in _selected_indices():
-		var draft := _drafts[index]
-		if draft.status not in [DearDearAssetDraft.STATUS_EXPORTED, DearDearAssetDraft.STATUS_SYNCED]:
-			_show_error("Export every selected record to JSON / CSV before syncing.")
-			return
-		rows.append(draft.catalog_dictionary())
-		selected_drafts.append(draft)
-	if rows.is_empty():
-		_show_error("Select at least one captured record.")
+	if _current_index < 0 or _current_index >= _drafts.size():
+		_show_error("Select an exported record first.")
+		return
+	var draft := _drafts[_current_index]
+	if draft.status not in [DearDearAssetDraft.STATUS_EXPORTED, DearDearAssetDraft.STATUS_SYNCED]:
+		_show_error("Export the current record to JSON / CSV before syncing.")
 		return
 	_busy = true
 	_update_action_state()
-	_set_status("Syncing %d record(s) to Google Sheets…" % rows.size())
-	var result: Dictionary = await _sheets.call_action("upsert", {"rows": rows})
+	_set_status("Syncing the current record to Google Sheets…")
+	var result: Dictionary = await _sheets.call_action("upsert", {"rows": [draft.catalog_dictionary()]})
 	_busy = false
 	if not result.ok:
 		_set_status(_response_error(result), true)
 		_update_action_state()
 		return
-	for draft in selected_drafts:
-		draft.status = DearDearAssetDraft.STATUS_SYNCED
-		draft.error_message = ""
+	draft.status = DearDearAssetDraft.STATUS_SYNCED
+	draft.error_message = ""
 	_refresh_queue()
 	_show_current_draft()
 	_queue_journal_save()
 	_update_action_state()
-	_set_status("Synced %d record(s) to Google Sheets." % rows.size())
+	_set_status("Synced the current record to Google Sheets.")
 
 
 func _selected_indices() -> PackedInt32Array:
@@ -1390,10 +1408,19 @@ func _set_form_control_enabled(control: Control, enabled: bool) -> void:
 func _update_action_state() -> void:
 	if not _capture_button:
 		return
-	var has_drafts := not _drafts.is_empty()
-	_capture_button.disabled = _busy or not has_drafts
-	_export_button.disabled = _busy or not has_drafts
-	_sync_button.disabled = _busy or not has_drafts
+	var has_current := _current_index >= 0 and _current_index < _drafts.size()
+	var current_status := _drafts[_current_index].status if has_current else ""
+	_capture_button.disabled = _busy or not has_current
+	_export_button.disabled = (
+		_busy
+		or not has_current
+		or current_status not in [DearDearAssetDraft.STATUS_CAPTURED, DearDearAssetDraft.STATUS_EXPORTED, DearDearAssetDraft.STATUS_SYNCED]
+	)
+	_sync_button.disabled = (
+		_busy
+		or not has_current
+		or current_status not in [DearDearAssetDraft.STATUS_EXPORTED, DearDearAssetDraft.STATUS_SYNCED]
+	)
 
 
 func _open_settings() -> void:

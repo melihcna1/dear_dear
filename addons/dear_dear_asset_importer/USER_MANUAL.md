@@ -144,10 +144,10 @@ The local audit should report no model collisions in a clean project. Keep raw l
 
 ### Step 6: Capture and save
 
-1. Select one or more ready rows in the queue.
+1. Make the ready row you want to process the active visible row in the queue.
 2. Click **Capture & Save Market PNG Image**.
 
-For each selected record, the importer:
+For the active record, the importer:
 
 1. Validates its metadata and destinations.
 2. Atomically reserves a permanent six-digit ID in Google Sheets.
@@ -159,9 +159,9 @@ An ID reservation is permanent, even if the import is abandoned. IDs are intenti
 
 ### Step 7: Export the managed catalog
 
-After capture, select the captured rows and click **Export CSV / JSON**.
+After capture, keep the captured record active and click **Export CSV / JSON**.
 
-This atomically upserts each record into:
+This atomically upserts the active record into:
 
 - `data/asset_catalog.json`
 - `data/asset_exports/asset_catalog.csv`
@@ -170,9 +170,9 @@ The CSV is regenerated deterministically from the managed JSON catalog. A succes
 
 ### Step 8: Synchronize Google Sheets
 
-Select the exported rows and click **Sync Google Sheets**.
+Make the exported record active and click **Sync Google Sheets**.
 
-This completes or updates their remote rows, changes their Sheet status to `ready`, and advances each local draft to **Synced**. Repeating the operation is safe because synchronization matches the stable `record_id`.
+This completes or updates its remote row, changes its Sheet status to `ready`, and advances the local draft to **Synced**. Repeating the operation is safe because synchronization matches the stable `record_id`.
 
 ### Step 9: Verify the result
 
@@ -316,7 +316,11 @@ The importer does not manually start a second filesystem scan after capture. If 
 
 ### Selecting another queue row leaves the old preview visible
 
-Restart or reload the plugin to pick up the current queue-selection behavior. In multi-select mode, the last row you click becomes the active preview; selected rows still determine which records output actions process.
+Restart or reload the plugin to pick up the current queue-selection behavior. Adding, reloading, or normally clicking a row clears stale selections and makes that row the active preview. Ctrl/Shift multi-selection is only for **Apply Category Settings to Selected**. **Capture**, **Export**, **Sync**, and **Remove Draft** always process the single active visible row, never a hidden previously selected row.
+
+### Capture names a previous file or asks to update the wrong record
+
+This was caused by sticky hidden queue selections in an older plugin version. Update the plugin and fully restart Godot. Select the intended row again; the output actions now process only that active visible record. If an earlier version already captured or synchronized several records, review those existing outputs and Sheet rows separately because updating the plugin does not undo completed writes.
 
 ### ID is rejected
 
@@ -357,7 +361,7 @@ Existing assets are never automatically migrated, renamed, or backfilled when co
 3. Add one or more self-contained GLBs.
 4. Complete and review every row's metadata.
 5. Compose the preview and optionally run **Temporary Capture Test**.
-6. Select ready rows and click **Capture & Save Market PNG Image**.
-7. Select captured rows and click **Export CSV / JSON**.
-8. Select exported rows and click **Sync Google Sheets**.
-9. Confirm the rows show **Synced** and verify important outputs.
+6. Make one ready row active and click **Capture & Save Market PNG Image**.
+7. Keep that captured row active and click **Export CSV / JSON**.
+8. Keep that exported row active and click **Sync Google Sheets**.
+9. Confirm the row shows **Synced**, verify its outputs, and repeat for the next row.

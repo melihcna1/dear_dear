@@ -1,6 +1,42 @@
 {
 	"items": [
 		{
+			"asset_name": "furniture_decor_f_cloth_shoes_210000",
+			"created_at_utc": "2026-08-28T11:24:03",
+			"gender": "unisex",
+			"id_in_filename": true,
+			"is_buyable": true,
+			"is_sellable": false,
+			"item_id": "210000",
+			"item_name": "F Cloth Shoes",
+			"main_category": "furniture",
+			"market_image_path": "res://assets/market/furniture/decor/furniture_decor_f_cloth_shoes_210000_s.png",
+			"model_path": "res://assets/dev_model/furniture/furniture_decor_f_cloth_shoes_210000.glb",
+			"record_id": "eb125c7c-17ce-0495-25c0-b66846b2a106",
+			"source_sha256": "f8eb4005757bc413421955ef12ff41d8ba937cd2602e9cf77bc8341e0e05317e",
+			"sprite_name": "furniture_decor_f_cloth_shoes_210000_s",
+			"sub_category": "decor",
+			"updated_at_utc": "2026-08-30T10:07:17"
+		},
+		{
+			"asset_name": "furniture_decor_f_cloth_shoes_210001",
+			"created_at_utc": "2026-08-28T11:24:57",
+			"gender": "unisex",
+			"id_in_filename": true,
+			"is_buyable": true,
+			"is_sellable": false,
+			"item_id": "210001",
+			"item_name": "F Cloth Shoes",
+			"main_category": "furniture",
+			"market_image_path": "res://assets/market/furniture/decor/furniture_decor_f_cloth_shoes_210001_s.png",
+			"model_path": "res://assets/dev_model/furniture/furniture_decor_f_cloth_shoes_210001.glb",
+			"record_id": "09991b80-c803-ce46-c61b-8bf879a36fda",
+			"source_sha256": "4d4faa6510795efe2cba6681f34167ab2d09beef520372ad5141e17b5e9c6bfc",
+			"sprite_name": "furniture_decor_f_cloth_shoes_210001_s",
+			"sub_category": "decor",
+			"updated_at_utc": "2026-08-30T10:07:26"
+		},
+		{
 			"asset_name": "f_cloth_top_thick_strap_crop_teal_310219",
 			"created_at_utc": "2026-08-27T08:29:37",
 			"gender": "female",

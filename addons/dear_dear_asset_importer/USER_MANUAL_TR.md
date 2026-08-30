@@ -146,10 +146,10 @@ Temiz bir projede yerel denetim model çakışması bildirmemelidir. Ham eski mo
 
 ### Adım 6: Görseli yakalayın ve kaydedin
 
-1. Kuyrukta hazır olan bir veya daha fazla satırı seçin.
+1. İşlemek istediğiniz hazır satırı kuyrukta etkin ve görünür satır yapın.
 2. **Capture & Save Market PNG Image** düğmesine basın.
 
-İçe aktarıcı, seçili her kayıt için sırayla şunları yapar:
+İçe aktarıcı etkin kayıt için sırayla şunları yapar:
 
 1. Meta verileri ve hedef yolları doğrular.
 2. Google E-Tablolar üzerinde kalıcı, altı haneli bir kimliği atomik biçimde rezerve eder.
@@ -161,9 +161,9 @@ Temiz bir projede yerel denetim model çakışması bildirmemelidir. Ham eski mo
 
 ### Adım 7: Yönetilen kataloğu dışa aktarın
 
-Yakalamadan sonra ilgili satırları seçip **Export CSV / JSON** düğmesine basın.
+Yakalamadan sonra yakalanan kaydı etkin bırakıp **Export CSV / JSON** düğmesine basın.
 
-Bu işlem her kaydı atomik olarak şu dosyalara ekler veya günceller:
+Bu işlem etkin kaydı atomik olarak şu dosyalara ekler veya günceller:
 
 - `data/asset_catalog.json`
 - `data/asset_exports/asset_catalog.csv`
@@ -172,9 +172,9 @@ CSV dosyası, yönetilen JSON kataloğundan her zaman aynı sırada ve belirli b
 
 ### Adım 8: Google E-Tablolar ile eşitleyin
 
-Dışa aktarılmış satırları seçip **Sync Google Sheets** düğmesine basın.
+Dışa aktarılmış kaydı etkin yapıp **Sync Google Sheets** düğmesine basın.
 
-Bu işlem uzaktaki satırları tamamlar veya günceller, E-Tablo durumunu `ready` olarak değiştirir ve her yerel taslağı **Synced** durumuna geçirir. Eşitleme sabit `record_id` ile yapıldığı için aynı işlemi tekrar çalıştırmak güvenlidir.
+Bu işlem uzaktaki satırı tamamlar veya günceller, E-Tablo durumunu `ready` olarak değiştirir ve yerel taslağı **Synced** durumuna geçirir. Eşitleme sabit `record_id` ile yapıldığı için aynı işlemi tekrar çalıştırmak güvenlidir.
 
 ### Adım 9: Sonucu doğrulayın
 
@@ -318,7 +318,11 @@ kontrol edin. Gerekirse modeli kendi içinde eksiksiz ikili glTF/GLB olarak yeni
 
 ### Başka bir kuyruk satırı seçildiğinde eski önizleme kalıyor
 
-Güncel kuyruk seçim davranışını yüklemek için eklentiyi veya Godot'u yeniden başlatın. Çoklu seçim modunda son tıkladığınız satır etkin önizleme olur; seçili satırlar çıktı işlemlerinin hangi kayıtları işleyeceğini belirlemeye devam eder.
+Güncel kuyruk seçim davranışını yüklemek için eklentiyi veya Godot'u yeniden başlatın. Dosya eklemek, yeniden yüklemek veya bir satıra normal tıklamak eski seçimleri temizler ve o satırı etkin önizleme yapar. Ctrl/Shift ile çoklu seçim yalnızca **Apply Category Settings to Selected** içindir. **Capture**, **Export**, **Sync** ve **Remove Draft** her zaman ekranda etkin görünen tek satırı işler; daha önce seçilmiş gizli bir satırı işlemez.
+
+### Yakalama önceki dosyanın adını gösteriyor veya yanlış kayıt için güncelleme onayı istiyor
+
+Buna eski bir eklenti sürümündeki yapışkan ve gizli kuyruk seçimleri neden oluyordu. Eklentiyi güncelleyin ve Godot'u tamamen yeniden başlatın. İstenen satırı tekrar seçin; çıktı işlemleri artık yalnızca etkin ve görünür kaydı işler. Eski sürüm birden fazla kaydı zaten yakaladıysa veya eşitlediyse, eklentiyi güncellemek tamamlanmış yazmaları geri almayacağı için bu çıktıları ve E-Tablo satırlarını ayrıca kontrol edin.
 
 ### Kimlik reddediliyor
 
@@ -359,7 +363,7 @@ Yapılandırma değiştiğinde mevcut varlıklar otomatik olarak taşınmaz, yen
 3. Bir veya daha fazla kendi içinde eksiksiz GLB ekleyin.
 4. Her satırın meta verilerini doldurup kontrol edin.
 5. Önizleme kadrajını ayarlayın ve isterseniz **Temporary Capture Test** çalıştırın.
-6. Hazır satırları seçip **Capture & Save Market PNG Image** düğmesine basın.
-7. Yakalanmış satırları seçip **Export CSV / JSON** düğmesine basın.
-8. Dışa aktarılmış satırları seçip **Sync Google Sheets** düğmesine basın.
-9. Satırların **Synced** durumuna geçtiğini ve önemli çıktıların doğru olduğunu doğrulayın.
+6. Hazır bir satırı etkin yapıp **Capture & Save Market PNG Image** düğmesine basın.
+7. Yakalanan satırı etkin bırakıp **Export CSV / JSON** düğmesine basın.
+8. Dışa aktarılan satırı etkin bırakıp **Sync Google Sheets** düğmesine basın.
+9. Satırın **Synced** durumuna geçtiğini ve çıktılarının doğru olduğunu doğrulayıp sonraki satır için tekrarlayın.
