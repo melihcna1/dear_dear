@@ -5,6 +5,11 @@ extends Control
 signal camera_profile_changed(profile: Dictionary)
 
 const CAPTURE_SIZE := Vector2i(1024, 1024)
+# A SubViewport can expose the previous model's frame for a few editor ticks
+# after the model node has been replaced. We reject that frame briefly, but do
+# not wait indefinitely when the new asset legitimately renders the same
+# colour/shape (for example two solid-colour clothing variants).
+const MAX_SAME_SIGNATURE_POLLS := 12
 const DEFAULT_PROFILE := {
 	"yaw": 0.65,
 	"pitch": -0.32,
@@ -39,6 +44,7 @@ var _model_generation := 0
 var _loaded_source_path := ""
 var _presented_signature := 0
 var _rejected_preview_signature := 0
+var _same_signature_polls := 0
 var _preview_fallback_image: Image
 
 
@@ -161,6 +167,7 @@ func clear_model() -> void:
 	_preview_poll_attempts = 0
 	_preview_polls_to_skip = 0
 	_rejected_preview_signature = 0
+	_same_signature_polls = 0
 	_preview_fallback_image = null
 	if _preview_poll_timer:
 		_preview_poll_timer.stop()
@@ -367,6 +374,7 @@ func _queue_preview_refresh(skip_initial_polls := false) -> void:
 	_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	_preview_poll_attempts = 250
 	if skip_initial_polls:
+		_same_signature_polls = 0
 		# Let the RenderingServer discard the old scenario before accepting a
 		# visible frame for the newly selected model.
 		_preview_polls_to_skip = 2
@@ -380,6 +388,7 @@ func _poll_preview_frame() -> void:
 			_present_preview_image(_preview_fallback_image)
 		_preview_fallback_image = null
 		_rejected_preview_signature = 0
+		_same_signature_polls = 0
 		_preview_poll_timer.stop()
 		return
 	_preview_poll_attempts -= 1
@@ -397,10 +406,13 @@ func _poll_preview_frame() -> void:
 		var signature := _image_signature(image)
 		if _rejected_preview_signature != 0 and signature == _rejected_preview_signature:
 			_preview_fallback_image = image
-			return
+			_same_signature_polls += 1
+			if _same_signature_polls < MAX_SAME_SIGNATURE_POLLS:
+				return
 		_present_preview_image(image)
 		_preview_fallback_image = null
 		_rejected_preview_signature = 0
+		_same_signature_polls = 0
 		_preview_poll_timer.stop()
 
 
