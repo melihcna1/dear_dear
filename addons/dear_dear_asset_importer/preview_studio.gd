@@ -90,19 +90,20 @@ func load_glb(path: String) -> Dictionary:
 		if packed:
 			scene_root = packed.instantiate()
 	else:
+		# KRİTİK DÜZELTME: GLTFDocumentExtensionConvertImporterMesh uzantısı,
+		# GLTFDocument.new() çağrılmadan ÖNCE kaydedilmelidir.
+		var mesh_conversion: GLTFDocumentExtension = null
+		if Engine.is_editor_hint():
+			mesh_conversion = GLTFDocumentExtensionConvertImporterMesh.new()
+			GLTFDocument.register_gltf_document_extension(mesh_conversion, true)
+		
 		var document := GLTFDocument.new()
 		var state := GLTFState.new()
 		# GLTFState defaults to extracting embedded images while running in the
 		# editor. Runtime preview must keep them in memory; extraction starts an
 		# editor reimport and can leave the generated material without a texture.
 		state.handle_binary_image_mode = GLTFState.HANDLE_BINARY_IMAGE_MODE_EMBED_AS_UNCOMPRESSED
-		# The editor does not register the runtime conversion extension by
-		# default, so generate_scene() otherwise returns non-renderable
-		# ImporterMeshInstance3D nodes. Register it only for this import.
-		var mesh_conversion: GLTFDocumentExtension = null
-		if Engine.is_editor_hint():
-			mesh_conversion = GLTFDocumentExtensionConvertImporterMesh.new()
-			GLTFDocument.register_gltf_document_extension(mesh_conversion, true)
+		
 		# Files in asset_import_sources are deliberately hidden from Godot's
 		# importer with .gdignore. GLTFDocument therefore needs the real OS path;
 		# passing res:// here fails with ERR_FILE_CANT_OPEN even though validation
@@ -131,7 +132,6 @@ func load_glb(path: String) -> Dictionary:
 	_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	_queue_preview_refresh(true)
 	return {"ok": true}
-
 
 func _project_resource_path(path: String) -> String:
 	if path.begins_with("res://"):
@@ -469,14 +469,13 @@ func _count_renderable_meshes(node: Node) -> int:
 func _calculate_bounds(node: Node, parent_transform: Transform3D) -> AABB:
 	var found := false
 	var result := AABB()
+	if node is MeshInstance3D and node.mesh:
+		result = parent_transform * node.get_aabb()
+		found = true
 	for child in node.get_children():
 		var child_transform := parent_transform
 		if child is Node3D:
 			child_transform = parent_transform * child.transform
-		if child is MeshInstance3D and child.mesh:
-			var transformed: AABB = child_transform * child.get_aabb()
-			result = transformed if not found else result.merge(transformed)
-			found = true
 		var nested := _calculate_bounds(child, child_transform)
 		if not nested.size.is_zero_approx():
 			result = nested if not found else result.merge(nested)
